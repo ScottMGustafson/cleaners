@@ -6,16 +6,9 @@ flake8-polyfill
 flake8-docstrings
 isort
 numpy
-matplotlib
 pandas>=1.0.0
-pycryptodome
-PyYAML
-Quandl
 radon
-requests
-scikit-learn
-statsmodels
 toml
 xenon
 xgboost
-git+https://github.com/ScottMGustafson/feets.git@master
+git+https://github.com/ScottMGustafson/feets.git@master#egg=feets
