@@ -1,6 +1,4 @@
-"""
-setup script
-"""
+"""setup script."""
 
 from io import open
 from os import path
@@ -13,6 +11,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 
 def get_install_requires():
+    """Read and parse requirements.txt."""
     with open("requirements.txt", "r") as f:
         lst = [
             x.strip()
@@ -23,6 +22,7 @@ def get_install_requires():
 
 
 def get_main_author():
+    """Read authors from AUTHORS.md."""
     with open("AUTHORS.md", "r") as f:
         authors = f.readlines()
     main_author, main_email = authors[0].split(" : ")
@@ -30,6 +30,7 @@ def get_main_author():
 
 
 def main():
+    """Set up and run the setup function."""
     main_author, main_email = get_main_author()
     setup(
         name="cleaners",  # Required
