@@ -43,7 +43,7 @@ class DropMostlyNaN(CleanerBase):
         mandatory=("target", "date", "symbol"),
         skip_if_missing=True,
         apply_score_transform=False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.nan_frac_thresh = nan_frac_thresh

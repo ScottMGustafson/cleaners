@@ -1,4 +1,3 @@
-import logging
 import random
 from cleaners.cleaner_base import CleanerBase
 

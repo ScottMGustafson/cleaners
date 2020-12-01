@@ -3,6 +3,7 @@ dask[complete]
 dask-ml
 flake8
 flake8-polyfill
+flake8-docstrings
 isort
 numpy
 matplotlib

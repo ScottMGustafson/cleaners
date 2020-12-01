@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from dask_ml.preprocessing import Categorizer, DummyEncoder
 
-from stocky_p.data_io import assert_no_duplicate_columns
-from stocky_p.data_proc import feat_exploration as eda
+from cleaners.util import assert_no_duplicate_columns
+from cleaners import eda
 
 
 class AddIndicators:
