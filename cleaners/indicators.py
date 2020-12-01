@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
+from dask_ml.preprocessing import Categorizer, DummyEncoder
 
-from cleaners.util import assert_no_duplicate_columns
-from cleaners import eda
+from stocky_p.data_io import assert_no_duplicate_columns
+from stocky_p.data_proc import feat_exploration as eda
 
 
 class AddIndicators:
@@ -26,7 +27,7 @@ class AddIndicators:
         self.expected_indicator_columns = kwargs.get("expected_indicator_columns", [])
         self.scoring = bool(self.expected_indicator_columns)
         self.added_indicator_columns = []
-        self.impute_value = -999
+        self.impute_value = kwargs.get("impute_value", -999)
 
     def fit(self, X, y=None):
         return self
@@ -148,3 +149,112 @@ class AddIndicators:
             X = self.build_transform(X)
         assert_no_duplicate_columns(X)
         return X
+
+
+def get_occur_frac(ddf, col, val=np.nan, sample_rate=0.1):
+    """
+    Estimates occurrence rates for data frame from sample_rate.
+
+    Parameters
+    ----------
+    ddf : dataframe (dask or pd)
+    col : str
+        column anem
+    val : Any
+        value of which to check occurences
+    sample_rate : float
+        random sample_rate rate (0-1)
+
+    Returns
+    -------
+    float
+        occurrence rate
+    """
+    ser = ddf[col].sample(frac=sample_rate, random_state=0)
+    vc = ser.value_counts()
+
+    if hasattr(vc, "compute"):
+        vc = vc.compute()
+    if val not in vc.keys():
+        return 0
+    return vc[val] / vc.size
+
+
+def encode_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.1):
+    """
+    encode special values in dataframe
+
+    Parameters
+    ----------
+    ddf : dataframe
+    col : str
+        column indicator_name
+    val : Any
+        value to encode
+    indicator_name : str
+        new indicator column indicator_name
+    min_frac : float
+        min occurrence rate.  if rate less than this value, do nothing.
+    sample_rate : float
+        sample_rate rate on data frame (random, row-wise) used to determine occurrence rate
+
+    Returns
+    -------
+    None
+
+    """
+    if min_frac:
+        frac = get_occur_frac(ddf, col, val=val, sample_rate=sample_rate)
+        if frac < min_frac:
+            return
+    if not indicator_name:
+        indicator_name = "{}_{}".format(col, val)
+    ddf[indicator_name] = 0
+    ddf[ddf[col] == val][indicator_name] = 1
+
+
+def encode_lt_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.1):
+    """
+    Encode if less than value
+
+    Parameters
+    ----------
+    ddf : dataframe
+    col : str
+        column indicator_name
+    val : Any
+        value to encode
+    indicator_name : str
+        new indicator column indicator_name
+    min_frac : float
+        min occurrence rate.  if rate less than this value, do nothing.
+    sample_rate : float
+        sample_rate rate on data frame (random, row-wise) used to determine occurrence rate
+
+    Returns
+    -------
+
+    """
+    if min_frac:
+        frac = get_occur_frac(ddf, col, val=val, sample_rate=sample_rate)
+        if frac < min_frac:
+            return
+    if not indicator_name:
+        indicator_name = "{}_lt_{}".format(col, val)
+    ddf[indicator_name] = 0
+    ddf[ddf[col] < val][indicator_name] = 1
+
+
+def one_hot_encoding(ddf, cols):
+    """apply one-hot-encoding on dask dfs"""
+    ddf = Categorizer(columns=cols).fit_transform(ddf)
+    ddf = DummyEncoder(columns=cols).fit_transform(ddf)
+    return ddf
+
+
+def one_hot_encode_pd(df, cols):
+    for col in cols:
+        dummies = pd.get_dummies(df[col], prefix=col, dummy_na=True)
+        df.drop(columns=[col], inplace=True)
+        df = pd.concat([df, dummies], axis=1)
+    return df

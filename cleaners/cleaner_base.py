@@ -1,12 +1,41 @@
 """ABC for data cleaners"""
 
+import logging
+
 
 class CleanerBase:
     """ABC for data cleaners"""
 
     def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
+        self.logger = logging.getLogger(kwargs.get("logger_name"))
         self.sample_rate = kwargs.get("sample_rate")
         self.sample_df = None
+        self.verbose = kwargs.get("verbose", True)
+
+    def log(self, msg, level="info"):
+        """
+        Optional logging wrapper.
+        Sends logging message only if self.verbose is true fo info
+        always sends warnings
+        If you'd prefer standard python logging,
+        use self.logger instead.
+
+        Parameters
+        ----------
+        msg : str
+        level : str
+            if level is info, only sends messages on verbose.  sends all others regardless
+
+        Returns
+        -------
+        None
+
+        """
+        if level == "info":
+            if self.verbose:
+                self.logger.info(msg)
+        else:
+            self.logger.info(msg)
 
     def get_sample_df(self, X, random_state=0):
         """

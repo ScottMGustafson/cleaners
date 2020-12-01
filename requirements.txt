@@ -1,5 +1,6 @@
 black==19.10b0
 dask[complete]
+dask-ml
 flake8
 flake8-polyfill
 isort
@@ -15,4 +16,5 @@ scikit-learn
 statsmodels
 toml
 xenon
+xgboost
 git+https://github.com/ScottMGustafson/feets.git@master

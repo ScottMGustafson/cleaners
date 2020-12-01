@@ -1,10 +1,6 @@
-import logging
-
 from feets import random_feats
 
 from cleaners.cleaner_base import CleanerBase
-
-logger = logging.getLogger("stocky_p")
 
 
 class RandomFeatureElimination(CleanerBase):
@@ -52,7 +48,7 @@ class RandomFeatureElimination(CleanerBase):
         assert self.min_num_folds <= self.kfold_kwargs.get("n_splits")
 
     def transform(self, X):
-        logger.info("xgb feat elim...")
+        self.log("xgb feat elim...")
         self._set_defaults(X)
         self.feat_dct = random_feats.run_random_feats(
             self.sample_df.reset_index(drop=True),  # .set_index(self.ix_vars),
@@ -69,7 +65,7 @@ class RandomFeatureElimination(CleanerBase):
         _ignore = self.ix_vars + [self.target_var] + self.ignore
         _keep = list(set(self.mandatory + _ignore))
         self.remaining_feats = sorted(set([x for x in feats if x not in _ignore]))
-        logger.info("{} columns remain".format(len(self.remaining_feats)))
+        self.log("{} columns remain".format(len(self.remaining_feats)))
         if self.drop:
             drop_cols = [x for x in X.columns if x not in list(set(feats + _keep))]
             return X.drop(columns=drop_cols)

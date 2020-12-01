@@ -1,11 +1,11 @@
 import logging
 import random
+from cleaners.cleaner_base import CleanerBase
 
-logger = logging.getLogger("stocky_p")
 
-
-class TwoWayInteractions:
+class TwoWayInteractions(CleanerBase):
     def __init__(self, max_new_feats=300, **kwargs):
+        super(TwoWayInteractions, self).__init__(**kwargs)
         self.max_new_feats = max_new_feats
         self.seed = kwargs.get("seed", 0)
         self.exclude = kwargs.get("exclude", [])
@@ -49,7 +49,7 @@ class TwoWayInteractions:
         self._set_defaults(X)
         if self.add_new_feats:
             self.feat_pairs += self._get_feat_pairs(X)
-        logger.info("Applying {} two-way feature interactions".format(len(self.feat_pairs)))
+        self.log("Applying {} two-way feature interactions".format(len(self.feat_pairs)))
         for x, y in self.feat_pairs:
             try:
                 X[f"{x}_X_{y}"] = X[x] * X[y]
