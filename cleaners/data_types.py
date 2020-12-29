@@ -1,3 +1,6 @@
+from cleaners.cleaner_base import CleanerBase
+
+
 def _infer_type(ser, type_list=None):
     if not type_list:
         type_list = ["float64", "M8[us]"]
@@ -17,22 +20,12 @@ def infer_data_types(df, type_list=None):
     return type_dct
 
 
-class FixDTypes:
-    def __init__(self, type_lst=None, row_sample_size=30, random_state=0):
+class FixDTypes(CleanerBase):
+    def __init__(self, type_lst=None, sample_frac=0.1, random_state=0, **kwargs):
+        super(FixDTypes, self).__init__(sample_rate=sample_frac, **kwargs)
         self.type_lst = type_lst
         self.dtypes = None
-        self.row_sample_size = row_sample_size
         self.random_state = random_state
-
-    def get_sample_df(self, X, random_state=0):
-        self.sample_df = X.sample(frac=1.0, random_state=self.random_state).head(
-            self.row_sample_size
-        )
-        if hasattr(self.sample_df, "compute"):
-            self.sample_df = self.sample_df.compute()
-
-    def fit(self, X, y=None):
-        return self
 
     def transform(self, X):
         self.get_sample_df(X)

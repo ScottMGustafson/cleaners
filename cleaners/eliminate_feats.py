@@ -1,9 +1,5 @@
-import logging
-
 from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
-
-logger = logging.getLogger("stocky_p")
 
 
 class DropUninformative(CleanerBase):
@@ -28,14 +24,14 @@ class DropUninformative(CleanerBase):
             )
 
     def transform(self, X):
-        logger.info("dropping uninformative")
+        self.log("dropping uninformative")
         self._set_defaults(X)
         drop_cols = eda.get_uninformative(self.feat_class_dct, self.mandatory)
         self.remaining_feats = list(
             set([x for x in X.columns if x not in drop_cols] + list(self.mandatory))
         )
         drop_cols = [x for x in X.columns if x not in self.remaining_feats]
-        logger.info("{} columns remain".format(len(self.remaining_feats)))
+        self.log("{} columns remain".format(len(self.remaining_feats)))
         return X.drop(columns=drop_cols)
 
 
@@ -47,7 +43,7 @@ class DropMostlyNaN(CleanerBase):
         mandatory=("target", "date", "symbol"),
         skip_if_missing=True,
         apply_score_transform=False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.nan_frac_thresh = nan_frac_thresh
@@ -89,7 +85,7 @@ class DropMostlyNaN(CleanerBase):
             nan_frac = self.sample_df[col].isna().sum() / sz
             if nan_frac > self.nan_frac_thresh:
                 self.drop_cols.append(col)
-        logger.info("dropping {} columns".format(len(self.drop_cols)))
+        self.log("dropping {} columns".format(len(self.drop_cols)))
         return X.drop(columns=self.drop_cols)
 
     def score_transform(self, X):
@@ -97,7 +93,7 @@ class DropMostlyNaN(CleanerBase):
         return X.drop(columns=self.drop_cols)
 
     def transform(self, X):
-        logger.info("dropping mostly NaN cols")
+        self.log("dropping mostly NaN cols")
         self.get_sample_df(X)
         if self.apply_score_transform or self.drop_cols:
             return self.score_transform(X)
@@ -138,7 +134,7 @@ class HighCorrelationElim(CleanerBase):
         ), "num_cols not all in data: {}".format(self.num_cols)
 
     def transform(self, X):
-        logger.info("dropping high correlation cols")
+        self.log("dropping high correlation cols")
         self._set_defaults(X)
         drop_cols = eda.get_high_corr_cols(
             self.sample_df[self.num_cols], rho_thresh=self.rho_thresh, method=self.method
@@ -146,7 +142,7 @@ class HighCorrelationElim(CleanerBase):
         self.remaining_feats = list(
             set([x for x in X.columns if x not in drop_cols] + list(self.mandatory))
         )
-        logger.info("{} columns remain".format(len(self.remaining_feats)))
+        self.log("{} columns remain".format(len(self.remaining_feats)))
         if self.drop:
             drop_cols = [x for x in X.columns if x not in self.remaining_feats]
             return X.drop(columns=drop_cols)
