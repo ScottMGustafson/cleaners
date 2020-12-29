@@ -1,4 +1,4 @@
-from stocky_p.data_proc.cleaner_base import CleanerBase
+from cleaners.cleaner_base import CleanerBase
 
 
 def _infer_type(ser, type_list=None):
