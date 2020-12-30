@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from cleaners.impute import ImputeByValue
 from tests.make_data import make_fake_impute_data
 

@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
-from cleaners.indicators import one_hot_encoding, one_hot_encode_pd, AddIndicators
+
+from cleaners.indicators import (AddIndicators, one_hot_encode_pd,
+                                 one_hot_encoding)
 from tests.make_data import make_fake_data
 
 

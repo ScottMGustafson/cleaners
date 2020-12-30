@@ -111,8 +111,34 @@ def get_mostly_value(df, value, thresh=0.05):
 
 @fail_on_dask
 def get_categorical(df, thresh=20):
-    """Get columns with fewer than ``thresh`` unique values."""
-    return [x for x in df.columns if df[x].value_counts().size <= thresh]
+    """
+    Get columns with fewer than ``thresh`` unique values.
+
+    Parameters
+    ----------
+    df : pd.Dataframe
+        data to test
+    thresh : int
+        max number of unique occurrences for numeric data to be considered categorical
+
+    Returns
+    -------
+    list
+        list of categorical columns
+    """
+    # exclude binary values...
+    binary_lst = get_binary(df)
+    cat_list = []
+    for x in df.columns:
+        if x in binary_lst:
+            continue
+        if df[x].dtype in ["object", "str"]:
+            cat_list.append(x)
+        else:
+            if df[x].value_counts().size <= thresh:
+                cat_list.append(x)
+
+    return cat_list
 
 
 def get_type_lst(feat_type_dct, feat_type, exclude_lst):
@@ -161,5 +187,5 @@ def get_uninformative(feat_class_dct, mandatory=()):
     return [
         x
         for x, v in feat_class_dct.items()
-        if v in ["null", "uninformative"] and v not in mandatory
+        if v in ["null", "uninformative"] and x not in mandatory
     ]

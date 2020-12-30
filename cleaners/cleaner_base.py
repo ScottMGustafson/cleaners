@@ -4,17 +4,31 @@ import logging
 
 
 class DataTooSmallForEDA(Exception):
+    """Exception for when data too small for eda."""
+
     pass
 
 
 class DaskDataFrameNotSampled(Exception):
+    """Exception for unsampled dask data."""
+
     pass
 
 
 class CleanerBase:
-    """ABC for data cleaners"""
+    """ABC for data cleaners."""
 
     def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
+        """
+        Init for Cleaner base.
+
+        Other Parameters
+        ----------------
+        logger_name : str, default=None
+        sample_rate : float, default=None
+        verbose : boolean, default=True
+        fail_on_warning : boolean, default=False
+        """
         self.logger = logging.getLogger(kwargs.get("logger_name"))
         self.sample_rate = kwargs.get("sample_rate")
         self.sample_df = None
@@ -24,6 +38,7 @@ class CleanerBase:
     def log(self, msg, level="info"):
         """
         Optional logging wrapper.
+
         Sends logging message only if self.verbose is true fo info
         always sends warnings
         If you'd prefer standard python logging,
@@ -101,13 +116,13 @@ class CleanerBase:
             self.logger.warning(msg)
 
     def _set_defaults(self, X):  # pylint: disable=unused-argument
-        """dummy set defaults"""
+        """Dummy set defaults."""
         pass
 
     def fit(self, X, y=None):  # pylint: disable=unused-argument
-        """dummy fit method"""
+        """Dummy fit method."""
         return self
 
     def transform(self, X):  # pylint: disable=no-self-use
-        """dummy transform method"""
+        """Dummy transform method."""
         return X

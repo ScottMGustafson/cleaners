@@ -1,7 +1,8 @@
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask_ml.preprocessing import Categorizer, DummyEncoder
-import dask.dataframe as dd
+
 from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
 from cleaners.util import assert_no_duplicate_columns

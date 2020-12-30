@@ -45,3 +45,42 @@ def make_fake_data(to_pandas=False):
         return df
     else:
         return dd.from_pandas(df, npartitions=2)
+
+
+def make_various_type_data():
+    df = pd.DataFrame(
+        dict(
+            a=list("abcdefgabc"),  # more than 5 unique vals, but string
+            b=[1, 2, 3, 4, 5, 4, 3, 2, 3, 1],
+            c=[
+                1.2,
+                1.3,
+                1.5,
+                1.2,
+                1.3,
+                1.5,
+                1.2,
+                1.3,
+                1.2,
+                1.3,
+            ],  # float with fewer than 5 unique vals
+            d=list("abcabcabca"),
+            e=[1, 0, 1, 1, 1, 0, 1, 0, 1, 0],
+            f=[1, 0, 1, 1, 1, 0, 1, 0, 1, np.nan],  # binary with nan
+            g=[1, 0, 1, 1, 1, 0, 1, 2, 1, np.nan],  # categborical int with nan
+            h=[
+                1.2,
+                1.3,
+                1.5,
+                1.21,
+                1.32,
+                1.53,
+                1.24,
+                1.35,
+                1.26,
+                1.37,
+            ],  # float with more than 5 unique vals
+            i=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],  # int with more than 5 unique vals
+        )
+    )
+    return df

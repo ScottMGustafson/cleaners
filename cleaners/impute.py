@@ -39,6 +39,7 @@ class ImputeByValue(CleanerBase):
         **kwargs,
     ):
         """
+        Impute with dask_ml simple imputer.
 
         Parameters
         ----------
@@ -64,6 +65,7 @@ class ImputeByValue(CleanerBase):
         self.cols = cols
 
     def fit(self, X, y=None):
+        """Fit method."""
         if self.cols:
             self.imputer = self.imputer.fit(X[self.cols], y)
         else:
@@ -71,6 +73,7 @@ class ImputeByValue(CleanerBase):
         return self
 
     def transform(self, X):
+        """Transform method."""
         if self.cols:
             return self.imputer.transform(X[self.cols])
         else:
