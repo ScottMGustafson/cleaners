@@ -2,11 +2,12 @@ import numpy as np
 import pandas as pd
 from dask_ml.preprocessing import Categorizer, DummyEncoder
 
-from cleaners.util import assert_no_duplicate_columns
 from cleaners import eda
+from cleaners.cleaner_base import CleanerBase
+from cleaners.util import assert_no_duplicate_columns
 
 
-class AddIndicators:
+class AddIndicators(CleanerBase):
     """
     Attributes
     ----------
@@ -17,6 +18,7 @@ class AddIndicators:
     """
 
     def __init__(self, unique_thresh=6, ignore=("target", "date", "symbol"), **kwargs):
+        super(AddIndicators, self).__init__(**kwargs)
         self.unique_thresh = unique_thresh
         self.ignore = ignore
         self.feats = kwargs.get("feats", [])
@@ -73,8 +75,13 @@ class AddIndicators:
     def make_nan_indicator_columns(self, X, col, new_col):
         if new_col in X.columns:
             raise Exception(f"AddIndicators::nan ind : {new_col} already exists in data")
-        X[new_col] = pd.isna(X[col]).astype(float)
-        X[col] = X[col].fillna(self.impute_value)
+
+        if hasattr(X, "compute"):
+            X[new_col] = pd.isna(X[col]).astype(float)
+            X[col] = X[col].fillna(self.impute_value)
+        else:
+            X[new_col] = pd.isna(X[col]).astype(float)
+            X[col] = X[col].fillna(self.impute_value)
         self.added_indicator_columns.append(new_col)
         assert_no_duplicate_columns(X)
         return X
