@@ -3,6 +3,14 @@
 import logging
 
 
+class DataTooSmallForEDA(Exception):
+    pass
+
+
+class DaskDataFrameNotSampled(Exception):
+    pass
+
+
 class CleanerBase:
     """ABC for data cleaners"""
 
@@ -11,6 +19,7 @@ class CleanerBase:
         self.sample_rate = kwargs.get("sample_rate")
         self.sample_df = None
         self.verbose = kwargs.get("verbose", True)
+        self.fail_on_warning_ = bool(kwargs.get("fail_on_warning", False))
 
     def log(self, msg, level="info"):
         """
@@ -37,21 +46,59 @@ class CleanerBase:
         else:
             self.logger.info(msg)
 
-    def get_sample_df(self, X, random_state=0):
+    def get_sample_df(self, X, random_state=0, min_rows=1000):
         """
-        get data sample
+        Get data sample from either pandas or dask dataframe.
 
         Parameters
         ----------
         X : dataframe
         random_state : int
+        min_rows : int, default=1000
+            if sample df has fewer rows than this number, raise a warning.
         """
         if self.sample_rate:
             self.sample_df = X.sample(frac=self.sample_rate, random_state=random_state)
         else:
             self.sample_df = X
         if hasattr(self.sample_df, "compute"):
+            if not self.sample_rate:
+                self.fail_on_warning(
+                    "cleaners.cleaner_base.get_sample_df:\n"
+                    + "Using entire dask collection as sample dataframe."
+                    + "This means a single worker will have to handle "
+                    + "the whole dataset. Is this what you want to do?"
+                    + "If not, then specify a sample rate.",
+                    exception=DaskDataFrameNotSampled,
+                )
             self.sample_df = self.sample_df.compute()
+            if self.sample_df.index.size < min_rows:
+                self.fail_on_warning(
+                    "cleaners.cleaner_base.get_sample_df:\n"
+                    + "The sample dataframe is smaller than {} rows".format(min_rows)
+                    + "This may not be large enough to adequately infer info about your data.",
+                    exception=DataTooSmallForEDA,
+                )
+
+    def fail_on_warning(self, msg, exception=Exception):
+        """
+        Warn or raise an exception depending on the state of ``fail_on_warning_``.
+
+        Parameters
+        ----------
+        msg : str
+            error / warning message
+        exception : Type, default=Exception
+            exception to raise on failure
+
+        Returns
+        -------
+        None
+        """
+        if self.fail_on_warning_:
+            raise exception(msg)
+        else:
+            self.logger.warning(msg)
 
     def _set_defaults(self, X):  # pylint: disable=unused-argument
         """dummy set defaults"""

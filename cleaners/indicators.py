@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from dask_ml.preprocessing import Categorizer, DummyEncoder
-
+import dask.dataframe as dd
 from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
 from cleaners.util import assert_no_duplicate_columns
@@ -37,12 +37,15 @@ class AddIndicators(CleanerBase):
     def _set_defaults(self, X):
         if not self.feats:
             self.feats = [x for x in X.columns if x not in self.ignore]
+
+        self.get_sample_df(X, random_state=0)
+
         if not self.feat_class_dct:
             self.feat_type_dct, self.feat_class_dct = eda.process_feats(
-                X, unique_thresh=self.unique_thresh, feats=self.feats
+                self.sample_df, unique_thresh=self.unique_thresh, feats=self.feats
             )
-        self.get_ohe_cols(X)
-        self.get_cont_na_feats(X)
+        self.get_ohe_cols(self.sample_df)
+        self.get_cont_na_feats(self.sample_df)
 
         msg = f"ohe_cols and continuous cols overlap: {self.cont_na_feats}, {self.ohe_cols}"
         assert len(set(self.ohe_cols + self.cont_na_feats)) == len(self.ohe_cols) + len(
@@ -50,6 +53,7 @@ class AddIndicators(CleanerBase):
         ), msg
 
     def get_ohe_cols(self, X):
+        """Determine which columns should be one-hot-encoded"""
         if not self.ohe_cols:
             self.ohe_cols = list(
                 sorted(
@@ -86,20 +90,6 @@ class AddIndicators(CleanerBase):
         assert_no_duplicate_columns(X)
         return X
 
-    @staticmethod
-    def _check_dummies(X, dummies, col):
-        try:
-            assert_no_duplicate_columns(dummies)
-        except AssertionError:
-            print("\n\ncolumn name: \n-----------------------------------", col)
-            print("dummies: {}\n".format(sorted(dummies.columns.tolist())))
-            print(
-                "unique values already in data: {}\n-----------------------------------\n".format(
-                    X[col].unique()
-                )
-            )
-            raise
-
     def make_dummy_cols(self, X, col, expected_dummies=()):
         try:
             if X[col].dtype in ["str", "object"]:
@@ -109,10 +99,13 @@ class AddIndicators(CleanerBase):
             msg = f"Problem with get_dummies on {col} with dtype={X[col].dtype}:\n\n"
             msg += str(e)
             raise Exception(msg)
-        AddIndicators._check_dummies(X, dummies, col)
+        _check_dummies(X, dummies, col)
         for x in dummies.columns:
             assert x not in X.columns, f"AddIndicators::one hot : {x} already exists in data"
         for x in expected_dummies:
+            # create a dummy column if it doesn't already exists.
+            # needed to ensure that dataframes have all expected columns
+            # between build and scoring data
             if x not in dummies.columns.tolist() + X.columns.tolist():
                 dummies[x] = 0.0
         self.added_indicator_columns.extend(dummies.columns.tolist())
@@ -156,6 +149,20 @@ class AddIndicators(CleanerBase):
             X = self.build_transform(X)
         assert_no_duplicate_columns(X)
         return X
+
+
+def _check_dummies(X, dummies, col):
+    try:
+        assert_no_duplicate_columns(dummies)
+    except AssertionError:
+        print("\n\ncolumn name: \n-----------------------------------", col)
+        print("dummies: {}\n".format(sorted(dummies.columns.tolist())))
+        print(
+            "unique values already in data: {}\n-----------------------------------\n".format(
+                X[col].unique()
+            )
+        )
+        raise
 
 
 def get_occur_frac(ddf, col, val=np.nan, sample_rate=0.1):
@@ -262,6 +269,6 @@ def one_hot_encoding(ddf, cols):
 def one_hot_encode_pd(df, cols):
     for col in cols:
         dummies = pd.get_dummies(df[col], prefix=col, dummy_na=True)
-        df.drop(columns=[col], inplace=True)
+        df = df.drop(columns=[col])
         df = pd.concat([df, dummies], axis=1)
     return df

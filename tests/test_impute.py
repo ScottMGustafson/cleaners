@@ -1,38 +1,7 @@
-import dask.dataframe as dd
 import numpy as np
-import pandas as pd
-from dask_ml.datasets import make_regression
-
+import pytest
 from cleaners.impute import ImputeByValue
-
-
-def make_fake_regression(ncols=10, nrows=100):
-    ddf = make_regression(
-        n_samples=nrows,
-        n_features=ncols,
-        n_informative=10,
-        n_targets=1,
-        bias=0.0,
-        effective_rank=None,
-        tail_strength=0.5,
-        noise=0.0,
-        shuffle=True,
-        coef=False,
-        random_state=None,
-        chunks=None,
-    )
-    return ddf
-
-
-def make_fake_impute_data(to_pandas=False):
-    nrows = 10
-    row = np.ones(nrows)
-    nan_row = np.array([1, 1, np.nan, np.nan, 1, 1, 1, 1, np.nan, 1])
-    df = pd.DataFrame(dict(a=nan_row, b=row, c=row))
-    if to_pandas:
-        return df
-    else:
-        return dd.from_pandas(df, npartitions=2)
+from tests.make_data import make_fake_impute_data
 
 
 def test_impute_by_value_dd():
