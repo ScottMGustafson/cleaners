@@ -47,6 +47,12 @@ def make_fake_data(to_pandas=False):
         return dd.from_pandas(df, npartitions=2)
 
 
+def get_types_classes_for_fake_data():
+    feat_type_dct = dict(a="string", b="numeric", c="numeric")
+    feat_class_dct = dict(a="categorical", b="binary", c="continuous")
+    return feat_type_dct, feat_class_dct
+
+
 def make_various_type_data():
     df = pd.DataFrame(
         dict(

@@ -70,25 +70,17 @@ class AddIndicators(CleanerBase):
         )
 
     def get_cont_na_feats(self, X):
-        num_cols = eda.get_type_lst(self.feat_type_dct, "numeric", self.ignore)
         if not self.cont_na_feats:
+            num_cols = eda.get_type_lst(self.feat_type_dct, "numeric", self.ignore)
             self.cont_na_feats = [x for x in num_cols if self.feat_class_dct[x] == "continuous"]
         assert all(
             [col in X.columns for col in self.cont_na_feats]
         ), "not all cols in data: {}".format(self.cont_na_feats)
 
     def make_nan_indicator_columns(self, X, col, new_col):
-        if new_col in X.columns:
-            raise Exception(f"AddIndicators::nan ind : {new_col} already exists in data")
-
-        if hasattr(X, "compute"):
-            X[new_col] = pd.isna(X[col]).astype(float)
-            X[col] = X[col].fillna(self.impute_value)
-        else:
-            X[new_col] = pd.isna(X[col]).astype(float)
-            X[col] = X[col].fillna(self.impute_value)
+        encoder = encode_nan_columns_dd if isinstance(X, dd.DataFrame) else encode_nan_columns_pd
+        X = encoder(X, col=col, new_col=new_col, copy=False)
         self.added_indicator_columns.append(new_col)
-        assert_no_duplicate_columns(X)
         return X
 
     def make_dummy_cols(self, X, col, expected_dummies=()):
@@ -230,7 +222,7 @@ def encode_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.
 
 def encode_lt_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.1):
     """
-    Encode if less than value
+    Encode if less than value.
 
     Parameters
     ----------
@@ -248,7 +240,7 @@ def encode_lt_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate
 
     Returns
     -------
-
+    None
     """
     if min_frac:
         frac = get_occur_frac(ddf, col, val=val, sample_rate=sample_rate)
@@ -261,15 +253,59 @@ def encode_lt_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate
 
 
 def one_hot_encoding(ddf, cols):
-    """apply one-hot-encoding on dask dfs"""
+    """One hot encode dask dataframes."""
     ddf = Categorizer(columns=cols).fit_transform(ddf)
     ddf = DummyEncoder(columns=cols).fit_transform(ddf)
     return ddf
 
 
 def one_hot_encode_pd(df, cols):
+    """One hot encode pandas dataframes."""
     for col in cols:
         dummies = pd.get_dummies(df[col], prefix=col, dummy_na=True)
         df = df.drop(columns=[col])
         df = pd.concat([df, dummies], axis=1)
     return df
+
+
+def nan_encoder(is_dask):
+    """Decorator with validation code for nan encoders."""
+
+    def _nan_encoder_wrap(func):
+        def _nan_encoder(X, col, new_col, copy):
+            _valid_type = pd.DataFrame if not is_dask else dd.DataFrame
+            if is_dask is not hasattr(X, "compute"):
+                raise TypeError(
+                    "This function is only valid for {}, not {}".format(_valid_type, type(X))
+                )
+            if not new_col:
+                new_col = col + "_nan"
+            assert (
+                new_col not in X.columns
+            ), f"AddIndicators::nan ind : {new_col} already exists in data"
+
+            ret_data = func(X, col, new_col=new_col, copy=copy)
+            assert_no_duplicate_columns(ret_data)
+            return ret_data
+
+        return _nan_encoder
+
+    return _nan_encoder_wrap
+
+
+@nan_encoder(is_dask=False)
+def encode_nan_columns_pd(X, col, new_col=None, copy=True):
+    """Encode missings for pandas dataframes."""
+    ser = pd.isna(X[col]).astype(float)
+    ret_data = X.copy() if copy else X
+    ret_data[new_col] = ser
+    return ret_data
+
+
+@nan_encoder(is_dask=True)
+def encode_nan_columns_dd(X, col, new_col=None, copy=True):
+    """Encode missings for dask dataframes."""
+    ser = dd.map_partitions(pd.isna, X[col], meta=float)
+    ret_data = X.copy() if copy else X
+    ret_data[new_col] = ser
+    return ret_data
