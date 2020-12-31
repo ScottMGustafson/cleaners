@@ -109,3 +109,21 @@ def test_merge_df_dd():
     res = obj.transform(df1).compute().set_index("date")
     exp = {"a": {"2021-01-03": 3}, "b": {"2021-01-03": 6}, "c": {"2021-01-03": "a"}}
     assert res.to_dict() == exp
+
+
+def test_ffill_pd():
+    obj = dataframe_ops.IndexForwardFillna(ix_col="date", method="ffill")
+    df = make_fake_date_data(to_pandas=True).set_index("date")
+    res = obj.transform(df)
+    filled_nans = res[["b", "c"]].values[8]
+    pre_arr = res[["b", "c"]].values[7]
+    np.testing.assert_array_equal(filled_nans, pre_arr)
+
+
+def test_ffill_dd():
+    obj = dataframe_ops.IndexForwardFillna(ix_col="date", method="ffill")
+    df = make_fake_date_data(to_pandas=False).set_index("date")
+    res = obj.transform(df).compute()
+    filled_nans = res[["b", "c"]].values[8]
+    pre_arr = res[["b", "c"]].values[7]
+    np.testing.assert_array_equal(filled_nans, pre_arr)

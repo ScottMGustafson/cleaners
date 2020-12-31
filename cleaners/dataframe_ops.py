@@ -1,31 +1,37 @@
 """Dataframe operations utilities."""
 
 from cleaners.cleaner_base import CleanerBase
+import pandas as pd
 
 
 class IndexForwardFillna(CleanerBase):
     """Fill missing data."""
 
-    def __init__(self, date_col="date", method="ffill", **kwargs):
+    def __init__(self, ix_col="date", method="ffill", is_sorted=True, **kwargs):
         """
         Init method.
 
         Parameters
         ----------
-        date_col : str, default=``date``
+        ix_col : str, default=``date``
             column to use to determine fill ordering, typically a datetime
         method : str, default=``ffill``
             fill method.
+        is_sorted : bool, default=True
+            if not sorted, sort.
         """
         super().__init__(**kwargs)
-        self.date_col = date_col
+        self.ix_col = ix_col
         self.method = method
+        self.is_sorted = is_sorted
 
     def transform(self, X):  # noqa: D102
         self.log("fillna...")
-        if X.index.name != self.date_col:
-            X = X.set_index(self.date_col)
-        X = X.sort_index().fillna(method=self.method)
+        if X.index.name != self.ix_col:
+            X = X.set_index(self.ix_col, sorted=True)
+        if not self.is_sorted:
+            X = X.reset_index().set_index(self.ix_col, sorted=True)
+        X = X.fillna(method=self.method)
         return X
 
 
