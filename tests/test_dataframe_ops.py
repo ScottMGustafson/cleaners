@@ -17,6 +17,7 @@ def test_multi_index_pd_resets():
 def test_multi_index_pd():
     ix_list = ["date", "a"]
     df = make_fake_date_data(to_pandas=True)
+    df["date"] = pd.to_datetime(df["date"])
     obj = dataframe_ops.CompositeIndex(ix_list=ix_list, drop=False, new_ix_name="index")
     res = obj.transform(df)
     res_index = list(res.index.values)
@@ -38,6 +39,7 @@ def test_multi_index_pd():
 def test_multi_index_dd():
     ix_list = ["date", "a"]
     df = make_fake_date_data(to_pandas=False)
+    df["date"] = df["date"].astype("M8[us]")
     obj = dataframe_ops.CompositeIndex(ix_list=ix_list, drop=False, new_ix_name="index")
     res = obj.transform(df).compute()
     res_index = list(res.index.values)
