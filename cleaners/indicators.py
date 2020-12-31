@@ -272,7 +272,7 @@ def nan_encoder(is_dask):
     """Decorator with validation code for nan encoders."""
 
     def _nan_encoder_wrap(func):
-        def _nan_encoder(X, col, new_col, copy):
+        def _nan_encoder(X, col, new_col=None, copy=False):
             _valid_type = pd.DataFrame if not is_dask else dd.DataFrame
             if is_dask is not hasattr(X, "compute"):
                 raise TypeError(

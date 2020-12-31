@@ -47,6 +47,34 @@ def make_fake_data(to_pandas=False):
         return dd.from_pandas(df, npartitions=2)
 
 
+def make_fake_date_data(to_pandas=False):
+    df = pd.DataFrame(
+        dict(
+            a=list("abaabcaaab"),
+            b=[1, 1, 0, 0, 1, 1, 0, 0, np.nan, 0],
+            c=[0.8011, 0.2202, 0.777, 0.736, 0.44, 0.1398, 0.593, 0.029, np.nan, 0.949],
+            date=[
+                "2021-01-01",
+                "2021-01-02",
+                "2021-01-03",
+                "2021-01-16",
+                "2021-01-11",
+                "2021-01-20",
+                "2021-01-21",
+                "2021-01-21",
+                "2021-01-23",
+                "2021-01-24",
+            ],
+        )
+    )
+    df["date"] = pd.to_datetime(df["date"])
+
+    if to_pandas:
+        return df
+    else:
+        return dd.from_pandas(df, npartitions=2)
+
+
 def get_types_classes_for_fake_data():
     feat_type_dct = dict(a="string", b="numeric", c="numeric")
     feat_class_dct = dict(a="categorical", b="binary", c="continuous")
