@@ -87,6 +87,9 @@ class CleanerBase:
                     + "If not, then specify a sample rate.",
                     exception=DaskDataFrameNotSampled,
                 )
+            else:
+                self.sample_df = self.sample_df.repartition(partition_size="100MB")
+
             self.sample_df = self.sample_df.compute()
             if self.sample_df.index.size < min_rows:
                 self.fail_on_warning(
