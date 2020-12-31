@@ -1,8 +1,9 @@
+import dask.dataframe as dd
+import numpy as np
+import pytest
+
 from cleaners import drop_replace
 from tests import make_data
-import numpy as np
-import dask.dataframe as dd
-import pytest
 
 
 def test_drop_named():

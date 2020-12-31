@@ -1,7 +1,8 @@
 """Dataframe operations utilities."""
 
-from cleaners.cleaner_base import CleanerBase
 import pandas as pd
+
+from cleaners.cleaner_base import CleanerBase
 
 
 class IndexForwardFillna(CleanerBase):

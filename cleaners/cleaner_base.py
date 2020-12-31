@@ -1,4 +1,4 @@
-"""ABC for data cleaners"""
+"""ABC for data cleaners."""
 
 import logging
 

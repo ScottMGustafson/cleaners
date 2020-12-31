@@ -1,3 +1,5 @@
+"""Cleaners for dropping, replacing and renaming columns."""
+
 import numpy as np
 
 from cleaners.cleaner_base import CleanerBase
@@ -12,10 +14,7 @@ class DropNamedCol(CleanerBase):
         self.mandatory = mandatory
         self.skip_on_fail = skip_on_fail
 
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
 
         assert not any(
             [x in self.mandatory for x in self.drop_cols]
@@ -36,10 +35,7 @@ class ReplaceBadColnameChars(CleanerBase):
         self.bad_chars = bad_chars
         self.repl_dct = repl_dct
 
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("ReplaceBadColnameChars...")
         if not self.repl_dct:
             self.repl_dct = {}
@@ -57,9 +53,6 @@ class DropNa(CleanerBase):
         self.subset = subset
         self.replace_inf = replace_infinities
 
-    def fit(self, X, y=None):
-        return self
-
     def _repl_inf(self, X):
         if hasattr(X, "compute"):
             X[self.subset] = X[self.subset].map_partitions(
@@ -69,7 +62,7 @@ class DropNa(CleanerBase):
             X[self.subset] = X[self.subset].replace({np.inf: np.nan, -np.inf: np.nan})
         return X
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("DropNa...")
         assert all([x in X.columns for x in self.subset]), "columns not in data: {}".format(
             self.subset
@@ -85,10 +78,7 @@ class DropDuplicates(CleanerBase):
         self.silently_fix = silently_fix
         self.df_identifier = df_identifier
 
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("checking dupes")
         if not self.silently_fix:
             assert not any(X.columns.duplicated()), (

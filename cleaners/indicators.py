@@ -1,3 +1,5 @@
+"""Add Indicators to either build or scoring data without imputation."""
+
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -10,6 +12,8 @@ from cleaners.util import assert_no_duplicate_columns
 
 class AddIndicators(CleanerBase):
     """
+    Add indicators to data without imputing missings.
+
     Attributes
     ----------
     added_indicator_columns : list
@@ -19,6 +23,14 @@ class AddIndicators(CleanerBase):
     """
 
     def __init__(self, unique_thresh=6, ignore=("target", "date", "symbol"), **kwargs):
+        """
+        Add indicators to data without imputing missings.
+
+        Parameters
+        ----------
+        unique_thresh : int, default=6
+        ignore : iterable, default=``("target", "date", "symbol")``
+        """
         super(AddIndicators, self).__init__(**kwargs)
         self.unique_thresh = unique_thresh
         self.ignore = ignore
@@ -31,9 +43,6 @@ class AddIndicators(CleanerBase):
         self.scoring = bool(self.expected_indicator_columns)
         self.added_indicator_columns = []
         self.impute_value = kwargs.get("impute_value", -999)
-
-    def fit(self, X, y=None):
-        return self
 
     def _set_defaults(self, X):
         if not self.feats:
@@ -54,7 +63,7 @@ class AddIndicators(CleanerBase):
         ), msg
 
     def get_ohe_cols(self, X):
-        """Determine which columns should be one-hot-encoded"""
+        """Determine which columns should be one-hot-encoded."""
         if not self.ohe_cols:
             self.ohe_cols = list(
                 sorted(
@@ -70,6 +79,7 @@ class AddIndicators(CleanerBase):
         )
 
     def get_cont_na_feats(self, X):
+        """Get continuous features, in which we might care about NaNs."""
         if not self.cont_na_feats:
             num_cols = eda.get_type_lst(self.feat_type_dct, "numeric", self.ignore)
             self.cont_na_feats = [x for x in num_cols if self.feat_class_dct[x] == "continuous"]
@@ -78,12 +88,14 @@ class AddIndicators(CleanerBase):
         ), "not all cols in data: {}".format(self.cont_na_feats)
 
     def make_nan_indicator_columns(self, X, col, new_col):
+        """Make NaN indicator columns without imputing."""
         encoder = encode_nan_columns_dd if isinstance(X, dd.DataFrame) else encode_nan_columns_pd
         X = encoder(X, col=col, new_col=new_col, copy=False)
         self.added_indicator_columns.append(new_col)
         return X
 
     def make_dummy_cols(self, X, col, expected_dummies=()):
+        """Make dummy columns for OHE."""
         try:
             if X[col].dtype in ["str", "object"]:
                 X[col] = X[col].replace({"nan": np.nan})
@@ -108,6 +120,7 @@ class AddIndicators(CleanerBase):
         return X
 
     def scoring_transform(self, X):
+        """Transform to be used when scoring new data on an existing model."""
         for col in self.cont_na_feats:
             new_col = f"{col}_nan"
             if new_col in self.expected_indicator_columns:
@@ -123,6 +136,7 @@ class AddIndicators(CleanerBase):
         return X
 
     def build_transform(self, X):
+        """Transform to be run on model build/train."""
         for col in self.cont_na_feats:
             new_col = f"{col}_nan"
             X = self.make_nan_indicator_columns(X, col, new_col)
@@ -133,7 +147,7 @@ class AddIndicators(CleanerBase):
 
         return X
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         assert_no_duplicate_columns(X)
         if self.scoring:
             X = self.scoring_transform(X)
@@ -189,7 +203,7 @@ def get_occur_frac(ddf, col, val=np.nan, sample_rate=0.1):
 
 def encode_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.1):
     """
-    encode special values in dataframe
+    Encode special values in dataframe.
 
     Parameters
     ----------
@@ -208,7 +222,6 @@ def encode_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.
     Returns
     -------
     None
-
     """
     if min_frac:
         frac = get_occur_frac(ddf, col, val=val, sample_rate=sample_rate)

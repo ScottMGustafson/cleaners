@@ -11,4 +11,4 @@ radon
 toml
 xenon
 xgboost
-git+https://github.com/ScottMGustafson/feets.git@master#egg=feets
+git+https://github.com/ScottMGustafson/feets.git@add_dask_compatibility#egg=feets

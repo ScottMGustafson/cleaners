@@ -32,9 +32,6 @@ class RandomFeatureElimination(CleanerBase):
         self.sample_df = None
         self.feat_dct = None
 
-    def fit(self, X, y=None):
-        return self
-
     def _set_defaults(self, X):
         self.get_sample_df(X)
         if not self.initial_feats:
