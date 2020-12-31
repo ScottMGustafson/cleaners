@@ -1,6 +1,7 @@
 """Utilities for data types."""
 
 from cleaners.cleaner_base import CleanerBase
+import pandas as pd
 
 
 def _infer_type(ser, type_list=None):
@@ -18,6 +19,7 @@ def _infer_type(ser, type_list=None):
 def infer_data_types(df, type_list=None):
     """Infer data types by trial and error."""
     type_dct = {}
+    assert isinstance(df, pd.DataFrame), "Only pd dataframes supported here"
     for k in df.columns:
         type_dct[k] = _infer_type(df[k], type_list=type_list)
     return type_dct
@@ -26,7 +28,7 @@ def infer_data_types(df, type_list=None):
 class FixDTypes(CleanerBase):
     """Fix bad datatypes."""
 
-    def __init__(self, type_lst=None, sample_frac=0.1, random_state=0, **kwargs):
+    def __init__(self, type_lst=None, sample_frac=0.05, random_state=0, **kwargs):
         """
         Init FixDTypes.
 
