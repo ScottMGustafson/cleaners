@@ -26,8 +26,19 @@ def test_replace_name():
 def test_dropna():
     df = make_data.make_fake_data(to_pandas=True)
     df.loc[9, "c"] = np.inf
+    df.loc[9, "a"] = "NaN"
     ddf = dd.from_pandas(df, npartitions=2)
-    obj = drop_replace.DropNa(["b", "c"], replace_infinities=True)
+    obj = drop_replace.DropNa(["b", "c", "a"], replace_infinities=True)
+    res = obj.transform(ddf).compute()
+    assert res.index.size == 8, str(res)
+
+
+def test_dropna_dd():
+    df = make_data.make_fake_data(to_pandas=True)
+    df.loc[9, "c"] = np.inf
+    df.loc[9, "a"] = "NaN"
+    ddf = dd.from_pandas(df, npartitions=2)
+    obj = drop_replace.DropNa(["b", "c", "a"], replace_infinities=True)
     res = obj.transform(ddf).compute()
     assert res.index.size == 8, str(res)
 

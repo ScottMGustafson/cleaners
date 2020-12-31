@@ -54,12 +54,11 @@ class DropNa(CleanerBase):
         self.replace_inf = replace_infinities
 
     def _repl_inf(self, X):
+        repl_dct = {np.inf: np.nan, -np.inf: np.nan, "NaN": np.nan, "nan": np.nan, "NA": np.nan}
         if hasattr(X, "compute"):
-            X[self.subset] = X[self.subset].map_partitions(
-                lambda x: x.replace({np.inf: np.nan, -np.inf: np.nan})
-            )
+            X[self.subset] = X[self.subset].map_partitions(lambda x: x.replace(repl_dct))
         else:
-            X[self.subset] = X[self.subset].replace({np.inf: np.nan, -np.inf: np.nan})
+            X[self.subset] = X[self.subset].replace(repl_dct)
         return X
 
     def transform(self, X):  # noqa: D102
