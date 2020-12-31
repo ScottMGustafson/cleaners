@@ -1,7 +1,8 @@
 """Utilities for data types."""
 
-from cleaners.cleaner_base import CleanerBase
 import pandas as pd
+
+from cleaners.cleaner_base import CleanerBase
 
 
 def _infer_type(ser, type_list=None):

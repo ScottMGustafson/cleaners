@@ -2,6 +2,24 @@ import numpy as np
 import pandas as pd
 from dask import dataframe as dd
 from dask_ml.datasets import make_regression
+from sklearn.datasets import make_regression
+
+
+def make_date_data(num_periods=10, num_feats=5, npartitions=2, to_dask=False, **regression_kwargs):
+    dates = pd.date_range("2001-01-01", periods=num_periods, freq="D")
+    days = dates.day_of_week
+    df = pd.DataFrame(
+        dict(date=dates, day_of_week=days, cum_sum=pd.Series(np.ones(num_periods)).cumsum())
+    )
+    df["day_of_week"] = df["date"].dt.day_of_week
+
+    X, y = make_regression(n_samples=num_periods, n_features=num_feats, **regression_kwargs)
+    df = pd.concat([df, pd.DataFrame(X), pd.DataFrame({"target": y})], ignore_index=True, axis=1)
+    df.columns = ["date", "day_of_week", "cumsum"] + [i for i in range(X.shape[1])] + ["target"]
+    df.set_index("date")
+    if to_dask:
+        return dd.from_pandas(df, npartitions=npartitions)
+    return df
 
 
 def make_fake_regression(ncols=10, nrows=100):
