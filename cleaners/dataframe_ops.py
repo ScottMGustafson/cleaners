@@ -121,7 +121,7 @@ class CompositeIndex(CleanerBase):
         X = X.reset_index()
         X[self.new_ix_name] = X[self.ix_list[0]].astype(str)
         for col in self.ix_list[1:]:
-            X[self.new_ix_name] += self.join_char + X[col]
+            X[self.new_ix_name] += self.join_char + X[col].astype(str)
         # if self.drop:
         #     X = X.drop(self.ix_list, axis=1)
         X = X.set_index(self.new_ix_name, drop=self.drop)
