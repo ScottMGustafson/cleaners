@@ -1,8 +1,7 @@
 import pandas as pd
 import pytest
 
-from cleaners.cleaner_base import (CleanerBase, DaskDataFrameNotSampled,
-                                   DataTooSmallForEDA)
+from cleaners.cleaner_base import CleanerBase, DaskDataFrameNotSampled, DataTooSmallForEDA
 from tests.make_data import make_fake_data
 
 
@@ -10,6 +9,7 @@ def test_get_sample_df():
     obj = CleanerBase(logger_name="test", sample_rate=None, verbose=False, fail_on_warning=True)
     df = make_fake_data(to_pandas=True)
     obj.get_sample_df(df)
+    assert obj.sample_df is not df
     pd.testing.assert_frame_equal(obj.sample_df, df)
 
 

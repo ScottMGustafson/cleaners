@@ -1,6 +1,7 @@
 """ABC for data cleaners."""
 
 import logging
+import dask.dataframe as dd
 
 
 class DataTooSmallForEDA(Exception):
@@ -75,8 +76,8 @@ class CleanerBase:
         if self.sample_rate:
             self.sample_df = X.sample(frac=self.sample_rate, random_state=random_state)
         else:
-            self.sample_df = X
-        if hasattr(self.sample_df, "compute"):
+            self.sample_df = X.copy()
+        if isinstance(self.sample_df, dd.DataFrame):
             if not self.sample_rate:
                 self.fail_on_warning(
                     "cleaners.cleaner_base.get_sample_df:\n"
