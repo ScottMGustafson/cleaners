@@ -80,15 +80,16 @@ class DropMostlyNaN(CleanerBase):
             self.drop_cols = missing_cols
 
     def build_transform(self, X):
-        sz = X.index.size
-        for col in X.columns:
-            nan_frac = self.sample_df[col].isna().sum() / sz
-            if nan_frac > self.nan_frac_thresh:
-                self.drop_cols.append(col)
+        sz = self.sample_df.index.size
+        cols = [x for x in self.sample_df.columns if x not in self.mandatory]
+        nan_frac = self.sample_df[cols].isna().sum() / sz
+        self.drop_cols += nan_frac[nan_frac > self.nan_frac_thresh].index.tolist()
+        self.drop_cols = sorted(list(set(self.drop_cols)))
         self.log("dropping {} columns".format(len(self.drop_cols)))
         return X.drop(columns=self.drop_cols)
 
     def score_transform(self, X):
+        # TODO: this fails in tests...why?
         self._validate_missing(X)
         return X.drop(columns=self.drop_cols)
 
