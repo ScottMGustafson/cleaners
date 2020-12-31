@@ -47,8 +47,12 @@ class RandomFeatureElimination(CleanerBase):
     def transform(self, X):
         self.log("xgb feat elim...")
         self._set_defaults(X)
+        if self.sample_rate:
+            df = self.sample_df
+        else:
+            df = X
         self.feat_dct = random_feats.run_random_feats(
-            self.sample_df.reset_index(drop=True),  # .set_index(self.ix_vars),
+            df,
             features=self.initial_feats,
             target=self.target_var,
             model_class=self.model_class,
