@@ -4,6 +4,7 @@ import dask.dataframe as dd
 import pandas as pd
 
 from cleaners.cleaner_base import CleanerBase
+from cleaners.util import sort_index
 
 
 class IndexForwardFillna(CleanerBase):
@@ -35,7 +36,7 @@ class IndexForwardFillna(CleanerBase):
             else:
                 X = X.reset_index().set_index(self.ix_col).sort_index()
         if not self.is_sorted:
-            X = X.reset_index().set_index(self.ix_col, sorted=True)
+            X = sort_index(X)
         X = X.fillna(method=self.method)
         return X
 
