@@ -43,6 +43,8 @@ class AddIndicators(CleanerBase):
         self.scoring = bool(self.expected_indicator_columns)
         self.added_indicator_columns = []
         self.impute_value = kwargs.get("impute_value", -999)
+        self.category_dict = kwargs.get("category_dict")
+        self.drop_first = kwargs.get("drop_first")
 
     def _set_defaults(self, X):
         if not self.feats:
@@ -89,34 +91,19 @@ class AddIndicators(CleanerBase):
 
     def make_nan_indicator_columns(self, X, col, new_col):
         """Make NaN indicator columns without imputing."""
-        encoder = encode_nan_columns_dd if isinstance(X, dd.DataFrame) else encode_nan_columns_pd
-        X = encoder(X, col=col, new_col=new_col, copy=False)
+        X = encode_nans(X, col=col, new_col=new_col, copy=False)
         self.added_indicator_columns.append(new_col)
         return X
 
-    def make_dummy_cols(self, X, col, expected_dummies=()):
-        """Make dummy columns for OHE."""
-        try:
-            if X[col].dtype in ["str", "object"]:
-                X[col] = X[col].replace({"nan": np.nan})
-            dummies = pd.get_dummies(X[col], prefix=col, dummy_na=True, drop_first=True)
-        except Exception as e:
-            msg = f"Problem with get_dummies on {col} with dtype={X[col].dtype}:\n\n"
-            msg += str(e)
-            raise Exception(msg)
-        _check_dummies(X, dummies, col)
-        for x in dummies.columns:
-            assert x not in X.columns, f"AddIndicators::one hot : {x} already exists in data"
-        for x in expected_dummies:
-            # create a dummy column if it doesn't already exists.
-            # needed to ensure that dataframes have all expected columns
-            # between build and scoring data
-            if x not in dummies.columns.tolist() + X.columns.tolist():
-                dummies[x] = 0.0
-        self.added_indicator_columns.extend(dummies.columns.tolist())
-        X = X.drop(columns=[col])
-        X = pd.concat([X, dummies], axis=1)
-        assert_no_duplicate_columns(X)
+    def make_dummy_cols(self, X, cols, expected_dummies=()):
+        X = _make_dummy_cols(
+            X,
+            expected_dummies=expected_dummies,
+            added_indicators=self.added_indicator_columns,
+            cols=cols,
+            category_dct=self.category_dict,
+            drop_first=self.drop_first,
+        )
         return X
 
     def scoring_transform(self, X):
@@ -265,60 +252,142 @@ def encode_lt_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate
     ddf[ddf[col] < val][indicator_name] = 1
 
 
-def one_hot_encoding(ddf, cols):
-    """One hot encode dask dataframes."""
-    ddf = Categorizer(columns=cols).fit_transform(ddf)
-    ddf = DummyEncoder(columns=cols).fit_transform(ddf)
+def _validate_categories(categories):
+    for k, v in categories.items():
+        if len(v.categories) == 1:
+            raise Exception(
+                f"drop_first=True, {k}:{v}\n"
+                + "``drop_first=True`` on a column with only one category specified. "
+                + "This results in your only dummy column being dropped. Set to ``drop_first=False``."
+            )
+
+
+def _one_hot_encode_dd(ddf, cols, categories=None, drop_first=False):
+    """
+    One hot encode dask dataframes.
+
+    Parameters
+    ----------
+    ddf : dd.DataFrame
+    cols = list[str]
+        list of column names
+    categories : dict[pandas.api.CategoricalDtype], default=none
+        mapping of cat_list to limit dummies.
+    drop_first : bool, default=False
+        drop first seen category
+
+    Returns
+    -------
+    dd.DataFrame
+
+    """
+
+    ddf = Categorizer(columns=cols, categories=categories).fit_transform(ddf)
+    ddf = DummyEncoder(columns=cols, drop_first=drop_first).fit_transform(ddf)
+
     return ddf
 
 
-def one_hot_encode_pd(df, cols):
-    """One hot encode pandas dataframes."""
+def _filter_categories(dummy_cols, col, cat_list):
+    return [
+        x for x in dummy_cols if x.split(f"{col}_")[-1] in map(str, cat_list) and x.startswith(col)
+    ]
+
+
+def _one_hot_encode_pd(df, cols, categories=None, drop_first=False):
+    """
+    One hot encode pandas dataframes.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+    cols = list[str]
+        list of column names
+    categories : dict[pandas.api.CategoricalDtype], default=none
+        mapping of cat_list to limit dummies.
+    drop_first : bool, default=False
+        drop first seen category
+
+    Returns
+    -------
+    pd.DataFrame
+
+    """
+
     for col in cols:
-        dummies = pd.get_dummies(df[col], prefix=col, dummy_na=True)
+        dummies = pd.get_dummies(df[col], prefix=col, dummy_na=False, drop_first=False)
+        dummy_cols = list(dummies.columns)
+        if categories:
+            try:
+                dummy_cols = _filter_categories(
+                    dummy_cols, col, categories[col].categories.tolist()
+                )
+            except KeyError:
+                pass
+        if drop_first:
+            dummy_cols = dummy_cols[1:]
+        dummies = dummies[dummy_cols]
         df = df.drop(columns=[col])
         df = pd.concat([df, dummies], axis=1)
     return df
 
 
-def nan_encoder(is_dask):
-    """Decorator with validation code for nan encoders."""
-
-    def _nan_encoder_wrap(func):
-        def _nan_encoder(X, col, new_col=None, copy=False):
-            _valid_type = pd.DataFrame if not is_dask else dd.DataFrame
-            if is_dask is not hasattr(X, "compute"):
-                raise TypeError(
-                    "This function is only valid for {}, not {}".format(_valid_type, type(X))
-                )
-            if not new_col:
-                new_col = col + "_nan"
-            assert (
-                new_col not in X.columns
-            ), f"AddIndicators::nan ind : {new_col} already exists in data"
-
-            ret_data = func(X, col, new_col=new_col, copy=copy)
-            assert_no_duplicate_columns(ret_data)
-            return ret_data
-
-        return _nan_encoder
-
-    return _nan_encoder_wrap
+def one_hot_encode(df, cols, categories=None, drop_first=False):
+    old_cols = df.columns.tolist()
+    if categories and drop_first:
+        _validate_categories(categories)
+    func = _one_hot_encode_dd if isinstance(df, dd.DataFrame) else _one_hot_encode_pd
+    res = func(df, cols, drop_first=drop_first, categories=categories)
+    new_cols = [x for x in df.columns if x not in old_cols]
+    return res
 
 
-@nan_encoder(is_dask=False)
-def encode_nan_columns_pd(X, col, new_col=None, copy=True):
-    """Encode missings for pandas dataframes."""
-    ser = pd.isna(X[col]).astype(float)
+def encode_nans(X, col, new_col=None, copy=True):
+    if not new_col:
+        new_col = col + "_nan"
+    assert new_col not in X.columns, f"AddIndicators::nan ind : {new_col} already exists in data"
+    if isinstance(X, dd.DataFrame):
+        ser = dd.map_partitions(pd.isna, X[col], meta=float)
+    else:
+        ser = pd.isna(X[col]).astype(float)
+
     ret_data = X.copy() if copy else X
     ret_data[new_col] = ser
+    assert_no_duplicate_columns(ret_data)
     return ret_data
 
 
-@nan_encoder(is_dask=True)
-def encode_nan_columns_dd(X, col, new_col=None, copy=True):
-    """Encode missings for dask dataframes."""
-    ser = dd.map_partitions(pd.isna, X[col], meta=float)
-    ret_data = X.copy() if copy else X
-    ret_data[new_col] = ser
-    return ret_data
+def _validate_category_dict(category_dct, cols):
+    assert isinstance(category_dct, dict)
+    for k, v in category_dct.items():
+        assert k in cols, f"make_dummy_cols: {k} not in allowed columns: \n{cols}\n\n"
+        if not isinstance(v, pd.CategoricalDtype):
+            assert isinstance(
+                v, list
+            ), f"categories must be list or pd.CategoricalDtype. Got {type(v)}"
+            category_dct[k] = pd.CategoricalDtype(list(set(v)))
+
+
+def _make_dummy_cols(
+    X, expected_dummies=(), added_indicators=None, cols=None, category_dct=None, drop_first=False
+):
+    """Make dummy columns for OHE without imputing nans"""
+    if not added_indicators:
+        added_indicators = []
+
+    if not cols:
+        cols = X.columns
+
+    if category_dct:
+        _validate_category_dict(category_dct, cols)
+
+    assert all([x in X.columns for x in cols])
+    old_cols = X.columns  # all columns currently in X
+    X = one_hot_encode(X, cols, categories=category_dct, drop_first=drop_first)
+    added_indicators.extend([x for x in X.columns if x not in old_cols])  # columns just added
+    assert_no_duplicate_columns(X)
+
+    for k in expected_dummies:
+        if k not in X.columns:
+            X[k] = 0.0
+    return X
