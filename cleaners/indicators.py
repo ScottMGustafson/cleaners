@@ -113,13 +113,13 @@ class AddIndicators(CleanerBase):
             if new_col in self.expected_indicator_columns:
                 X = self.make_nan_indicator_columns(X, col, new_col)
 
+        expected_dummies = []
         for col in self.ohe_cols:
             assert col not in self.cont_na_feats, f"{col} already in cont_na_feats"
-            expected_dummies = [
-                x for x in self.expected_indicator_columns if x.startswith(col + "_")
-            ]
-            X = self.make_dummy_cols(X, col, expected_dummies=expected_dummies)
-
+            expected_dummies.extend(
+                [x for x in self.expected_indicator_columns if x.startswith(col + "_")]
+            )
+        X = self.make_dummy_cols(X, self.ohe_cols, expected_dummies=expected_dummies)
         return X
 
     def build_transform(self, X):
@@ -130,8 +130,7 @@ class AddIndicators(CleanerBase):
 
         for col in self.ohe_cols:
             assert col not in self.cont_na_feats, f"{col} already in cont_na_feats"
-            X = self.make_dummy_cols(X, col, expected_dummies=[])
-
+        X = self.make_dummy_cols(X, self.ohe_cols, expected_dummies=[])
         return X
 
     def transform(self, X):  # noqa: D102
@@ -381,7 +380,9 @@ def _make_dummy_cols(
     if category_dct:
         _validate_category_dict(category_dct, cols)
 
-    assert all([x in X.columns for x in cols])
+    assert all(
+        [x in X.columns for x in cols]
+    ), f"Not all requested columns in data: {[x for x in cols if x not in X.columns]}"
     old_cols = X.columns  # all columns currently in X
     X = one_hot_encode(X, cols, categories=category_dct, drop_first=drop_first)
     added_indicators.extend([x for x in X.columns if x not in old_cols])  # columns just added
