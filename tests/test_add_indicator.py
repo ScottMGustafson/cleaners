@@ -1,9 +1,9 @@
 import pytest
-
-from cleaners.indicators import *
-from cleaners import indicators
-from tests.make_data import get_types_classes_for_fake_data, make_fake_data
 from pandas.api.types import CategoricalDtype
+
+from cleaners import indicators
+from cleaners.indicators import *
+from tests.make_data import get_types_classes_for_fake_data, make_fake_data
 
 
 def test_one_hot_encoding_str():
