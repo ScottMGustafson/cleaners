@@ -89,9 +89,9 @@ class CleanerBase:
                     exception=DaskDataFrameNotSampled,
                 )
             else:
-                self.sample_df = self.sample_df.repartition(partition_size="100MB")
+                self.sample_df = self.sample_df.astype(X.dtypes).repartition(partition_size="100MB")
 
-            self.sample_df = self.sample_df.astype(X.dtypes).compute()
+            self.sample_df = self.sample_df.compute()
             if self.sample_df.index.size < min_rows:
                 self.fail_on_warning(
                     "cleaners.cleaner_base.get_sample_df:\n"
