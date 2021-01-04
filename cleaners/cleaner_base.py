@@ -3,6 +3,7 @@
 import logging
 
 import dask.dataframe as dd
+import pandas as pd
 
 
 class DataTooSmallForEDA(Exception):
@@ -63,7 +64,32 @@ class CleanerBase:
         else:
             self.logger.info(msg)
 
-    def get_sample_df(self, X, random_state=0, min_rows=1000):
+    def _sample_pd(self, X, random_state=0):
+        if self.sample_rate:
+            self.sample_df = X.sample(frac=self.sample_rate, random_state=random_state)
+        else:
+            self.sample_df = X.copy(deep=True)
+
+    def _sample_dd(self, X, random_state=0, partition_size="100MB"):
+        if not self.sample_rate:
+            self.fail_on_warning(
+                "cleaners.cleaner_base.get_sample_df:\n"
+                + "Using entire dask collection as sample dataframe."
+                + "This means a single worker will have to handle "
+                + "the whole dataset. Is this what you want to do?"
+                + "If not, then specify a sample rate.",
+                exception=DaskDataFrameNotSampled,
+            )
+
+            self.sample_df = X.compute()
+        else:
+            self.sample_df = (
+                X.sample(frac=self.sample_rate, random_state=random_state)
+                .repartition(partition_size=partition_size)
+                .compute()
+            )
+
+    def get_sample_df(self, X, random_state=0, min_rows=1000, partition_size="100MB"):
         """
         Get data sample from either pandas or dask dataframe.
 
@@ -73,32 +99,22 @@ class CleanerBase:
         random_state : int
         min_rows : int, default=1000
             if sample df has fewer rows than this number, raise a warning.
+        partition_size : str, default=100MB
+            optional partition size for post-sample repartition.
         """
-        if self.sample_rate:
-            self.sample_df = X.sample(frac=self.sample_rate, random_state=random_state)
+        if isinstance(self.sample_df, pd.DataFrame):
+            self._sample_pd(X, random_state=0)
+        elif isinstance(self.sample_df, dd.DataFrame):
+            self._sample_dd(X, random_state=random_state, partition_size=partition_size)
         else:
-            self.sample_df = X.copy()
-        if isinstance(self.sample_df, dd.DataFrame):
-            if not self.sample_rate:
-                self.fail_on_warning(
-                    "cleaners.cleaner_base.get_sample_df:\n"
-                    + "Using entire dask collection as sample dataframe."
-                    + "This means a single worker will have to handle "
-                    + "the whole dataset. Is this what you want to do?"
-                    + "If not, then specify a sample rate.",
-                    exception=DaskDataFrameNotSampled,
-                )
-            else:
-                self.sample_df = self.sample_df.astype(X.dtypes)
-
-            self.sample_df = self.sample_df.compute()
-            if self.sample_df.index.size < min_rows:
-                self.fail_on_warning(
-                    "cleaners.cleaner_base.get_sample_df:\n"
-                    + "The sample dataframe is smaller than {} rows".format(min_rows)
-                    + "This may not be large enough to adequately infer info about your data.",
-                    exception=DataTooSmallForEDA,
-                )
+            raise TypeError("Type: {} not supported".format(type(X)))
+        if self.sample_df.index.size < min_rows:
+            self.fail_on_warning(
+                "cleaners.cleaner_base.get_sample_df:\n"
+                + "The sample dataframe is smaller than {} rows".format(min_rows)
+                + "This may not be large enough to adequately infer info about your data.",
+                exception=DataTooSmallForEDA,
+            )
 
     def fail_on_warning(self, msg, exception=Exception):
         """

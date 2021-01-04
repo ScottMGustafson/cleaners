@@ -1,7 +1,6 @@
 """Dataframe operations utilities."""
 
 import dask.dataframe as dd
-import pandas as pd
 
 from cleaners.cleaner_base import CleanerBase
 from cleaners.util import sort_index

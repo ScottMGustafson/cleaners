@@ -12,6 +12,7 @@ def assert_no_duplicate_columns(df):
 
 
 def sort_index(X):
+    """Sort an index for either dask or pandas dataframes."""
     if hasattr(X, "compute"):
         assert X.known_divisions
         ix_name = X.index.name
@@ -23,6 +24,7 @@ def sort_index(X):
 
 
 def set_index(X, ix_name, sort=True):
+    """Set an index for either dask or pandas dataframes."""
     if hasattr(X, "compute"):
         if not X.known_divisions:
             X = X.set_index(ix_name, sorted=sort)

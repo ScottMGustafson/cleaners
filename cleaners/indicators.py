@@ -96,6 +96,22 @@ class AddIndicators(CleanerBase):
         return X
 
     def make_dummy_cols(self, X, cols, expected_dummies=()):
+        """
+        Make Dummy columns.
+
+        Parameters
+        ----------
+        X : dataframe
+        cols : list
+            list of subset columns
+        expected_dummies: list, optional
+            if present, will make columns, even if associated value wasn't present
+            in the data.  In this case, it will pass the new columns as all zeros.
+
+        Returns
+        -------
+        Dataframe
+        """
         X = _make_dummy_cols(
             X,
             expected_dummies=expected_dummies,
@@ -280,7 +296,6 @@ def _one_hot_encode_dd(ddf, cols, categories=None, drop_first=False):
     dd.DataFrame
 
     """
-
     ddf = Categorizer(columns=cols, categories=categories).fit_transform(ddf)
     ddf = DummyEncoder(columns=cols, drop_first=drop_first).fit_transform(ddf)
 
@@ -312,7 +327,6 @@ def _one_hot_encode_pd(df, cols, categories=None, drop_first=False):
     pd.DataFrame
 
     """
-
     for col in cols:
         dummies = pd.get_dummies(df[col], prefix=col, dummy_na=False, drop_first=False)
         dummy_cols = list(dummies.columns)
@@ -332,16 +346,16 @@ def _one_hot_encode_pd(df, cols, categories=None, drop_first=False):
 
 
 def one_hot_encode(df, cols, categories=None, drop_first=False):
-    old_cols = df.columns.tolist()
+    """Apply One-hot-encoding to either dask for pandas dataframes."""
     if categories and drop_first:
         _validate_categories(categories)
     func = _one_hot_encode_dd if isinstance(df, dd.DataFrame) else _one_hot_encode_pd
     res = func(df, cols, drop_first=drop_first, categories=categories)
-    new_cols = [x for x in df.columns if x not in old_cols]
     return res
 
 
 def encode_nans(X, col, new_col=None, copy=True):
+    """Encode NaNs in a dataframe."""
     if not new_col:
         new_col = col + "_nan"
     assert new_col not in X.columns, f"AddIndicators::nan ind : {new_col} already exists in data"
@@ -370,7 +384,7 @@ def _validate_category_dict(category_dct, cols):
 def _make_dummy_cols(
     X, expected_dummies=(), added_indicators=None, cols=None, category_dct=None, drop_first=False
 ):
-    """Make dummy columns for OHE without imputing nans"""
+    """Make dummy columns for OHE without imputing nans."""
     if not added_indicators:
         added_indicators = []
 

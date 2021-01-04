@@ -44,7 +44,7 @@ class RandomFeatureElimination(CleanerBase):
         assert self.feats_to_beat <= self.num_new_feats
         assert self.min_num_folds <= self.kfold_kwargs.get("n_splits")
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("xgb feat elim...")
         self._set_defaults(X)
         if self.sample_rate:
