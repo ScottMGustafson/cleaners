@@ -102,9 +102,9 @@ class CleanerBase:
         partition_size : str, default=100MB
             optional partition size for post-sample repartition.
         """
-        if isinstance(self.sample_df, pd.DataFrame):
+        if isinstance(X, pd.DataFrame):
             self._sample_pd(X, random_state=0)
-        elif isinstance(self.sample_df, dd.DataFrame):
+        elif isinstance(X, dd.DataFrame):
             self._sample_dd(X, random_state=random_state, partition_size=partition_size)
         else:
             raise TypeError("Type: {} not supported".format(type(X)))
