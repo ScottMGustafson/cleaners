@@ -8,7 +8,7 @@ from tests.make_data import make_fake_data
 def test_get_sample_df():
     obj = CleanerBase(logger_name="test", sample_rate=None, verbose=False, fail_on_warning=True)
     df = make_fake_data(to_pandas=True)
-    obj.get_sample_df(df)
+    obj.get_sample_df(df, min_rows=10)
     assert obj.sample_df is not df
     pd.testing.assert_frame_equal(obj.sample_df, df)
 

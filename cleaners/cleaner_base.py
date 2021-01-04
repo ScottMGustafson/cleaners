@@ -89,7 +89,7 @@ class CleanerBase:
                 .compute()
             )
 
-    def get_sample_df(self, X, random_state=0, min_rows=1000, partition_size="100MB"):
+    def get_sample_df(self, X, random_state=0, min_rows=100, partition_size="100MB"):
         """
         Get data sample from either pandas or dask dataframe.
 

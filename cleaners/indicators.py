@@ -1,5 +1,7 @@
 """Add Indicators to either build or scoring data without imputation."""
 
+import copy
+
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -89,14 +91,9 @@ class AddIndicators(CleanerBase):
             [col in X.columns for col in self.cont_na_feats]
         ), "not all cols in data: {}".format(self.cont_na_feats)
 
-    def make_nan_indicator_columns(self, X, col, new_col):
-        """Make NaN indicator columns without imputing."""
-        X = encode_nans(X, col=col, new_col=new_col, copy=False)
-        self.added_indicator_columns.append(new_col)
-        return X
+    def scoring_transform(self, X):
+        """Transform to be used when scoring new data on an existing model.
 
-    def make_dummy_cols(self, X, cols, expected_dummies=()):
-        """
         Make Dummy columns.
 
         Parameters
@@ -112,22 +109,10 @@ class AddIndicators(CleanerBase):
         -------
         Dataframe
         """
-        X = _make_dummy_cols(
-            X,
-            expected_dummies=expected_dummies,
-            added_indicators=self.added_indicator_columns,
-            cols=cols,
-            category_dct=self.category_dict,
-            drop_first=self.drop_first,
-        )
-        return X
-
-    def scoring_transform(self, X):
-        """Transform to be used when scoring new data on an existing model."""
         for col in self.cont_na_feats:
             new_col = f"{col}_nan"
             if new_col in self.expected_indicator_columns:
-                X = self.make_nan_indicator_columns(X, col, new_col)
+                X = encode_nans(X, col=col, new_col=new_col, copy_data=False)
 
         expected_dummies = []
         for col in self.ohe_cols:
@@ -135,18 +120,37 @@ class AddIndicators(CleanerBase):
             expected_dummies.extend(
                 [x for x in self.expected_indicator_columns if x.startswith(col + "_")]
             )
-        X = self.make_dummy_cols(X, self.ohe_cols, expected_dummies=expected_dummies)
-        return X
+        res = _make_dummy_cols(
+            X,
+            expected_dummies=expected_dummies,
+            added_indicators=self.added_indicator_columns,
+            cols=self.ohe_cols,
+            category_dct=self.category_dict,
+            drop_first=self.drop_first,
+        )
+        res = res.repartition(partition_size="100MB").perist()
+        return res
 
     def build_transform(self, X):
         """Transform to be run on model build/train."""
         for col in self.cont_na_feats:
             new_col = f"{col}_nan"
-            X = self.make_nan_indicator_columns(X, col, new_col)
+            X = encode_nans(X, col=col, new_col=new_col, copy_data=False)
+            self.added_indicator_columns.append(new_col)
 
+        print("ohe")
         for col in self.ohe_cols:
             assert col not in self.cont_na_feats, f"{col} already in cont_na_feats"
-        X = self.make_dummy_cols(X, self.ohe_cols, expected_dummies=[])
+
+        X = _make_dummy_cols(
+            X,
+            expected_dummies=[],
+            added_indicators=self.added_indicator_columns,
+            cols=self.ohe_cols,
+            category_dct=self.category_dict,
+            drop_first=self.drop_first,
+        )
+
         return X
 
     def transform(self, X):  # noqa: D102
@@ -174,99 +178,6 @@ def _check_dummies(X, dummies, col):
         raise
 
 
-def get_occur_frac(ddf, col, val=np.nan, sample_rate=0.1):
-    """
-    Estimates occurrence rates for data frame from sample_rate.
-
-    Parameters
-    ----------
-    ddf : dataframe (dask or pd)
-    col : str
-        column anem
-    val : Any
-        value of which to check occurences
-    sample_rate : float
-        random sample_rate rate (0-1)
-
-    Returns
-    -------
-    float
-        occurrence rate
-    """
-    ser = ddf[col].sample(frac=sample_rate, random_state=0)
-    vc = ser.value_counts()
-
-    if hasattr(vc, "compute"):
-        vc = vc.compute()
-    if val not in vc.keys():
-        return 0
-    return vc[val] / vc.size
-
-
-def encode_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.1):
-    """
-    Encode special values in dataframe.
-
-    Parameters
-    ----------
-    ddf : dataframe
-    col : str
-        column indicator_name
-    val : Any
-        value to encode
-    indicator_name : str
-        new indicator column indicator_name
-    min_frac : float
-        min occurrence rate.  if rate less than this value, do nothing.
-    sample_rate : float
-        sample_rate rate on data frame (random, row-wise) used to determine occurrence rate
-
-    Returns
-    -------
-    None
-    """
-    if min_frac:
-        frac = get_occur_frac(ddf, col, val=val, sample_rate=sample_rate)
-        if frac < min_frac:
-            return
-    if not indicator_name:
-        indicator_name = "{}_{}".format(col, val)
-    ddf[indicator_name] = 0
-    ddf[ddf[col] == val][indicator_name] = 1
-
-
-def encode_lt_val(ddf, col, val, indicator_name=None, min_frac=None, sample_rate=0.1):
-    """
-    Encode if less than value.
-
-    Parameters
-    ----------
-    ddf : dataframe
-    col : str
-        column indicator_name
-    val : Any
-        value to encode
-    indicator_name : str
-        new indicator column indicator_name
-    min_frac : float
-        min occurrence rate.  if rate less than this value, do nothing.
-    sample_rate : float
-        sample_rate rate on data frame (random, row-wise) used to determine occurrence rate
-
-    Returns
-    -------
-    None
-    """
-    if min_frac:
-        frac = get_occur_frac(ddf, col, val=val, sample_rate=sample_rate)
-        if frac < min_frac:
-            return
-    if not indicator_name:
-        indicator_name = "{}_lt_{}".format(col, val)
-    ddf[indicator_name] = 0
-    ddf[ddf[col] < val][indicator_name] = 1
-
-
 def _validate_categories(categories):
     for k, v in categories.items():
         if len(v.categories) == 1:
@@ -277,7 +188,7 @@ def _validate_categories(categories):
             )
 
 
-def _one_hot_encode_dd(ddf, cols, categories=None, drop_first=False):
+def _one_hot_encode_dd_(ddf, cols, categories=None, drop_first=False):
     """
     One hot encode dask dataframes.
 
@@ -298,7 +209,6 @@ def _one_hot_encode_dd(ddf, cols, categories=None, drop_first=False):
     """
     ddf = Categorizer(columns=cols, categories=categories).fit_transform(ddf)
     ddf = DummyEncoder(columns=cols, drop_first=drop_first).fit_transform(ddf)
-
     return ddf
 
 
@@ -306,6 +216,49 @@ def _filter_categories(dummy_cols, col, cat_list):
     return [
         x for x in dummy_cols if x.split(f"{col}_")[-1] in map(str, cat_list) and x.startswith(col)
     ]
+
+
+def _get_dummies(cat_ser, col, drop_first, categories):
+    dummies = dd.get_dummies(cat_ser, prefix=col, dummy_na=False, drop_first=False)
+    dummy_cols = list(dummies.columns)
+    if categories:
+        try:
+            dummy_cols = _filter_categories(dummy_cols, col, categories[col].categories.tolist())
+        except KeyError:
+            pass
+    if drop_first:  # to match dask behavior
+        dummy_cols = dummy_cols[1:]
+    return dummies[dummy_cols]
+
+
+def _one_hot_encode_dd(df, cols, categories=None, drop_first=False):
+    """
+    One hot encode dask dataframes.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+    cols = list[str]
+        list of column names
+    categories : dict[pandas.api.CategoricalDtype], default=none
+        mapping of cat_list to limit dummies.
+    drop_first : bool, default=False
+        drop first seen category
+
+    Returns
+    -------
+    dd.DataFrame
+
+    """
+    # this is causing a keyerror: remove for now
+    # subdf = df[cols].categorize(columns=cols)
+    # for col in cols:
+    #     dummies = dd.get_dummies(subdf[col], prefix=col, dummy_na=False, drop_first=False)
+    for col in cols:
+        cat_ser = df[col].astype("category").cat.as_known()
+        dummies = _get_dummies(cat_ser, col, drop_first, categories)
+        df = df.drop(columns=[col]).merge(dummies, left_index=True, right_index=True)
+    return df
 
 
 def _one_hot_encode_pd(df, cols, categories=None, drop_first=False):
@@ -328,20 +281,8 @@ def _one_hot_encode_pd(df, cols, categories=None, drop_first=False):
 
     """
     for col in cols:
-        dummies = pd.get_dummies(df[col], prefix=col, dummy_na=False, drop_first=False)
-        dummy_cols = list(dummies.columns)
-        if categories:
-            try:
-                dummy_cols = _filter_categories(
-                    dummy_cols, col, categories[col].categories.tolist()
-                )
-            except KeyError:
-                pass
-        if drop_first:
-            dummy_cols = dummy_cols[1:]
-        dummies = dummies[dummy_cols]
-        df = df.drop(columns=[col])
-        df = pd.concat([df, dummies], axis=1)
+        dummies = _get_dummies(df[col], col, drop_first, categories)
+        df = df.drop(columns=[col]).merge(dummies, left_index=True, right_index=True)
     return df
 
 
@@ -354,7 +295,7 @@ def one_hot_encode(df, cols, categories=None, drop_first=False):
     return res
 
 
-def encode_nans(X, col, new_col=None, copy=True):
+def encode_nans(X, col, new_col=None, copy_data=True):
     """Encode NaNs in a dataframe."""
     if not new_col:
         new_col = col + "_nan"
@@ -364,7 +305,10 @@ def encode_nans(X, col, new_col=None, copy=True):
     else:
         ser = pd.isna(X[col]).astype(float)
 
-    ret_data = X.copy() if copy else X
+    if copy_data:
+        ret_data = copy.copy(X)
+    else:
+        ret_data = X
     ret_data[new_col] = ser
     assert_no_duplicate_columns(ret_data)
     return ret_data
@@ -384,7 +328,22 @@ def _validate_category_dict(category_dct, cols):
 def _make_dummy_cols(
     X, expected_dummies=(), added_indicators=None, cols=None, category_dct=None, drop_first=False
 ):
-    """Make dummy columns for OHE without imputing nans."""
+    """
+    Make dummy columns for OHE without imputing nans.
+
+    Parameters
+    ----------
+    X : dataframe
+    cols : list
+        list of subset columns
+    expected_dummies: list, optional
+        if present, will make columns, even if associated value wasn't present
+        in the data.  In this case, it will pass the new columns as all zeros.
+
+    Returns
+    -------
+    dataframe
+    """
     if not added_indicators:
         added_indicators = []
 

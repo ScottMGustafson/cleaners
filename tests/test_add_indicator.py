@@ -26,7 +26,7 @@ def test_one_hot_encoding_str():
 def test_one_hot_encoding_drop_first():
     ddf = make_fake_data(to_pandas=False)
     res = indicators._one_hot_encode_dd(ddf, cols=["a", "b"], drop_first=True)
-    assert set(res.columns) == {"c", "a_b", "a_c", "b_0.0"}
+    assert set(res.columns) == {"c", "a_b", "a_c", "b_1.0"}
 
     a_b = res["a_b"].values.compute()
     a_c = res["a_c"].values.compute()
@@ -156,7 +156,7 @@ def test_one_hot_encoding_int_limit_categories_drop_first():
         ddf, cols=["a", "b"], categories=cats, drop_first=True
     ).compute()
     # [1, 1, 0, 0, 1, 1, 0, 0, np.nan, 0]
-    assert set(res.columns) == {"c", "a_b", "b_0.0"}
+    assert set(res.columns) == {"c", "a_b", "b_1.0"}
 
 
 def test_one_hot_encoding_pd():
@@ -266,6 +266,24 @@ def test_get_cont_na_feats_assertionerror(get_indicator_dd_setup):
         obj.get_cont_na_feats(X)
 
 
+@pytest.mark.parametrize("copy_it", [True, False])
+def test_encode_nan_copy_pd(get_indicator_pd_setup, copy_it):
+    obj, X = get_indicator_pd_setup
+    col = "c"
+    exp = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+    res = encode_nans(X, col, new_col="c_nan", copy_data=copy_it)
+    np.testing.assert_array_equal(res["c_nan"].values, exp)
+
+
+@pytest.mark.parametrize("copy_it", [True, False])
+def test_encode_nan_copy_dd(get_indicator_dd_setup, copy_it):
+    obj, X = get_indicator_dd_setup
+    col = "c"
+    exp = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+    res = encode_nans(X, col, new_col="c_nan", copy_data=copy_it).compute()
+    np.testing.assert_array_equal(res["c_nan"].values, exp)
+
+
 def test_encode_nan_pd_fails_on_dupe_column_name(get_indicator_pd_setup):
     obj, X = get_indicator_pd_setup
     col = "c"
@@ -301,21 +319,13 @@ def test_encode_nan_dd_copy(get_indicator_dd_setup):
     new_col = "b_nan"
     col = "b"
 
-    res = encode_nans(X, col, new_col=new_col, copy=True).compute()
+    res = encode_nans(X, col, new_col=new_col, copy_data=True).compute()
     assert new_col not in X.columns
     assert new_col in res.columns
 
-    res = encode_nans(X, col, new_col=new_col, copy=False).compute()
+    res = encode_nans(X, col, new_col=new_col, copy_data=False).compute()
     assert new_col in X.columns
     assert new_col in res.columns
-
-
-def test_make_nan_ind_columns(get_indicator_pd_setup):
-    obj, X = get_indicator_pd_setup
-    obj.added_indicator_columns = ["z", "y"]
-    new_data = obj.make_nan_indicator_columns(X, "b", "b_nan")
-    assert obj.added_indicator_columns == ["z", "y", "b_nan"]
-    assert "b_nan" in new_data.columns
 
 
 def test_filter_categories():
