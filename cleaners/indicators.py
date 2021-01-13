@@ -45,7 +45,7 @@ class AddIndicators(CleanerBase):
         self.scoring = bool(self.expected_indicator_columns)
         self.added_indicator_columns = []
         self.impute_value = kwargs.get("impute_value", -999)
-        self.category_dict = kwargs.get("category_dict")
+        self.ohe_categories = kwargs.get("ohe_categories", dict())
         self.drop_first = kwargs.get("drop_first")
 
     def _set_defaults(self, X):
@@ -81,6 +81,8 @@ class AddIndicators(CleanerBase):
         assert all([col in X.columns for col in self.ohe_cols]), "not all cols in data: {}".format(
             self.ohe_cols
         )
+
+        # self._set_ohe_categories()
 
     def get_cont_na_feats(self, X):
         """Get continuous features, in which we might care about NaNs."""
@@ -125,11 +127,21 @@ class AddIndicators(CleanerBase):
             expected_dummies=expected_dummies,
             added_indicators=self.added_indicator_columns,
             cols=self.ohe_cols,
-            category_dct=self.category_dict,
+            category_dct=self.ohe_categories,
             drop_first=self.drop_first,
         )
         res = res.repartition(partition_size="100MB").perist()
         return res
+
+    def _set_ohe_categories(self):
+        for col in self.ohe_cols:
+            if col in self.ohe_categories.keys():
+                continue  # to not override user supplied categories
+            unique_vals = self.sample_df[col].dropna().unique()
+            try:
+                self.ohe_categories[col] = pd.CategoricalDtype(unique_vals)
+            except ValueError:
+                pass
 
     def build_transform(self, X):
         """Transform to be run on model build/train."""
@@ -138,7 +150,6 @@ class AddIndicators(CleanerBase):
             X = encode_nans(X, col=col, new_col=new_col, copy_data=False)
             self.added_indicator_columns.append(new_col)
 
-        print("ohe")
         for col in self.ohe_cols:
             assert col not in self.cont_na_feats, f"{col} already in cont_na_feats"
 
@@ -147,7 +158,7 @@ class AddIndicators(CleanerBase):
             expected_dummies=[],
             added_indicators=self.added_indicator_columns,
             cols=self.ohe_cols,
-            category_dct=self.category_dict,
+            category_dct=self.ohe_categories,
             drop_first=self.drop_first,
         )
 
@@ -251,11 +262,13 @@ def _one_hot_encode_dd(df, cols, categories=None, drop_first=False):
 
     """
     # this is causing a keyerror: remove for now
-    # subdf = df[cols].categorize(columns=cols)
+    subdf = df[cols].categorize(columns=cols)
     # for col in cols:
     #     dummies = dd.get_dummies(subdf[col], prefix=col, dummy_na=False, drop_first=False)
     for col in cols:
-        cat_ser = df[col].astype("category").cat.as_known()
+        cat_ser = subdf[col]
+        # if not categories:
+        #     cat_ser = cat_ser.cat.as_known()  # this is slow.
         dummies = _get_dummies(cat_ser, col, drop_first, categories)
         df = df.drop(columns=[col]).merge(dummies, left_index=True, right_index=True)
     return df

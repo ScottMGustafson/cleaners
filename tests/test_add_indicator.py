@@ -26,7 +26,7 @@ def test_one_hot_encoding_str():
 def test_one_hot_encoding_drop_first():
     ddf = make_fake_data(to_pandas=False)
     res = indicators._one_hot_encode_dd(ddf, cols=["a", "b"], drop_first=True)
-    assert set(res.columns) == {"c", "a_b", "a_c", "b_1.0"}
+    assert set(res.columns) == {"c", "a_b", "a_c", "b_0.0"}
 
     a_b = res["a_b"].values.compute()
     a_c = res["a_c"].values.compute()
@@ -156,7 +156,7 @@ def test_one_hot_encoding_int_limit_categories_drop_first():
         ddf, cols=["a", "b"], categories=cats, drop_first=True
     ).compute()
     # [1, 1, 0, 0, 1, 1, 0, 0, np.nan, 0]
-    assert set(res.columns) == {"c", "a_b", "b_1.0"}
+    assert set(res.columns) == {"c", "a_b", "b_0.0"}
 
 
 def test_one_hot_encoding_pd():
