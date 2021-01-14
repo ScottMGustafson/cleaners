@@ -13,12 +13,12 @@ def assert_no_duplicate_columns(df):
 
 def cum_sum_index(df):
     """Use cumulative sum of ones to create simple int index."""
-    df = df.reset_index()
+    df = df.reset_index(drop=True)
     df["temp_ix"] = 1
     df["cum_sum"] = df["temp_ix"].cumsum()
-    df = df.set_index("cum_sum").persist()
+    df = df.set_index("cum_sum", drop=True)
     df = df.drop(columns=["temp_ix"])
-    return df
+    return df.persist()
 
 
 def sort_index(X):
