@@ -30,6 +30,7 @@ class RandomFeatureElimination(CleanerBase):
         self.remaining_feats = None
         self.sample_df = None
         self.feat_dct = None
+        self.model_objects = None
         self.ignore = kwargs.get("ignore", [])
         self.kfold_kwargs = kwargs.get("kfold_kwargs", dict(n_splits=5))
         self.initial_feats = kwargs.get("initial_feats", [])
@@ -55,7 +56,7 @@ class RandomFeatureElimination(CleanerBase):
             df = self.sample_df
         else:
             df = X
-        self.feat_dct = random_feats.run_random_feats(
+        self.feat_dct, self.model_objects = random_feats.run_random_feats(
             df,
             features=self.initial_feats,
             target=self.target_var,
