@@ -11,6 +11,16 @@ def assert_no_duplicate_columns(df):
     assert not any(df.columns.duplicated())
 
 
+def cum_sum_index(df):
+    """Use cumulative sum of ones to create simple int index."""
+    df = df.reset_index()
+    df["temp_ix"] = 1
+    df["cum_sum"] = df["temp_ix"].cumsum()
+    df = df.set_index("cum_sum").persist()
+    df = df.drop(columns=["temp_ix"])
+    return df
+
+
 def sort_index(X):
     """Sort an index for either dask or pandas dataframes."""
     if hasattr(X, "compute"):
