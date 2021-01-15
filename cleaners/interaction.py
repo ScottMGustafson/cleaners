@@ -1,9 +1,41 @@
+"""Cleaner for 2-way interactions."""
+
 import random
+
 from cleaners.cleaner_base import CleanerBase
 
 
 class TwoWayInteractions(CleanerBase):
+    """Cleaner for two-way interctions."""
+
     def __init__(self, max_new_feats=300, **kwargs):
+        """
+        Generates interaction features up to ``max_new_feats``.
+
+        Parameters
+        ----------
+        max_new_feats : int, default=300
+            Max number of new feats to generate to prevent the memory from blowing up.
+            for example, if you have 30 features, then 30 * 30 == 900  2-way interaction features.
+            This cleaner will randomly generate 300 out of that 900. Therefore
+            the suggested usage is to just use this interaction among
+            the top N most important feats unless you got tons of
+            memory to spare.
+
+        Other Parameters
+        ----------------
+        seed : int, default=0
+        exclude : list
+            feats to exclude
+        subset: list
+            feats used to generate interactions.
+        feat_pairs : list
+            existing feature pairs to use
+        add_new_feats : bool
+            if true, adds new features from feature pairs.  This would be
+            false if you are scoring new data on an existing model. if you
+            are building a new model, this should be true.
+        """
         super(TwoWayInteractions, self).__init__(**kwargs)
         self.max_new_feats = max_new_feats
         self.seed = kwargs.get("seed", 0)
@@ -11,9 +43,6 @@ class TwoWayInteractions(CleanerBase):
         self.subset = kwargs.get("subset", [])
         self.feat_pairs = kwargs.get("feat_pairs", [])
         self.add_new_feats = kwargs.get("add_new_feats", True)
-
-    def fit(self, X, y=None):
-        return self
 
     def _set_defaults(self, X):
         if not self.subset:
@@ -44,7 +73,7 @@ class TwoWayInteractions(CleanerBase):
             feat_pairs = self._sample_list(feat_pairs)
         return [x for x in feat_pairs if x not in self.feat_pairs]
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self._set_defaults(X)
         if self.add_new_feats:
             self.feat_pairs += self._get_feat_pairs(X)
@@ -60,17 +89,19 @@ class TwoWayInteractions(CleanerBase):
 
 def get_expected_pairs(feat_pairs, feats):
     """
+    Get expected feature pairs .
 
     Parameters
     ----------
     feat_pairs : list
         list of feature tuples
     feats : list
+        features to consider
 
     Returns
     -------
-    list
-        list of filtered feature tuples
+    list[tuple]
+        list of filtered feature pairs
     """
     expected_pairs = []
     expected_two_ways_columns = []

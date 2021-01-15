@@ -23,7 +23,7 @@ class DropUninformative(CleanerBase):
                 self.sample_df, unique_thresh=self.unique_thresh, feats=self.feats
             )
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("dropping uninformative")
         self._set_defaults(X)
         drop_cols = eda.get_uninformative(self.feat_class_dct, self.mandatory)
@@ -56,6 +56,7 @@ class DropMostlyNaN(CleanerBase):
 
     @staticmethod
     def find_mostly_nan(X, nan_frac_thresh=0.5):
+        """Find columns where mostly nan."""
         sz = X.index.size
         cols = []
         for col in X.columns:
@@ -63,9 +64,6 @@ class DropMostlyNaN(CleanerBase):
             if nan_frac > nan_frac_thresh:
                 cols.append(col)
         return cols
-
-    def fit(self, X, y=None):
-        return self
 
     def _validate_missing(self, X):
         assert not any(
@@ -80,19 +78,22 @@ class DropMostlyNaN(CleanerBase):
             self.drop_cols = missing_cols
 
     def build_transform(self, X):
-        sz = X.index.size
-        for col in X.columns:
-            nan_frac = self.sample_df[col].isna().sum() / sz
-            if nan_frac > self.nan_frac_thresh:
-                self.drop_cols.append(col)
+        """Transform build data."""
+        sz = self.sample_df.index.size
+        cols = [x for x in self.sample_df.columns if x not in self.mandatory]
+        nan_frac = self.sample_df[cols].isna().sum() / sz
+        self.drop_cols += nan_frac[nan_frac > self.nan_frac_thresh].index.tolist()
+        self.drop_cols = sorted(list(set(self.drop_cols)))
         self.log("dropping {} columns".format(len(self.drop_cols)))
         return X.drop(columns=self.drop_cols)
 
     def score_transform(self, X):
+        """Transform score data."""
+        # TODO: this fails in tests...why?
         self._validate_missing(X)
         return X.drop(columns=self.drop_cols)
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("dropping mostly NaN cols")
         self.get_sample_df(X)
         if self.apply_score_transform or self.drop_cols:
@@ -116,9 +117,6 @@ class HighCorrelationElim(CleanerBase):
         self.sample_rate = kwargs.get("sample_rate")
         self.sample_df = None
 
-    def fit(self, X, y=None):
-        return self
-
     def _set_defaults(self, X):
         self.get_sample_df(X)
         if not self.feats:
@@ -133,7 +131,7 @@ class HighCorrelationElim(CleanerBase):
             [col in X.columns for col in self.num_cols]
         ), "num_cols not all in data: {}".format(self.num_cols)
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("dropping high correlation cols")
         self._set_defaults(X)
         drop_cols = eda.get_high_corr_cols(

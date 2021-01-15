@@ -11,6 +11,10 @@ class RandomFeatureElimination(CleanerBase):
         model_class,
         ix_vars=("date", "symbol"),
         mandatory=("target", "date", "symbol"),
+        num_new_feats=10,
+        feats_to_beat=9,
+        min_num_folds=4,
+        importance_type="gain",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -19,21 +23,19 @@ class RandomFeatureElimination(CleanerBase):
         self.ix_vars = list(ix_vars)
         self.model_class = model_class
         self.mandatory = list(mandatory)
+        self.min_num_folds = min_num_folds
+        self.num_new_feats = num_new_feats
+        self.feats_to_beat = feats_to_beat
+        self.importance_type = importance_type
+        self.remaining_feats = None
+        self.sample_df = None
+        self.feat_dct = None
+        self.model_objects = None
         self.ignore = kwargs.get("ignore", [])
         self.kfold_kwargs = kwargs.get("kfold_kwargs", dict(n_splits=5))
         self.initial_feats = kwargs.get("initial_feats", [])
-        self.min_num_folds = kwargs.get("min_num_folds", 1)
-        self.num_new_feats = kwargs.get("num_new_feats")
-        self.feats_to_beat = kwargs.get("feats_to_beat")
         self.sample_rate = kwargs.get("sample_rate")
         self.drop = kwargs.get("drop", False)
-        self.remaining_feats = None
-        self.sample_rate = kwargs.get("sample_rate")
-        self.sample_df = None
-        self.feat_dct = None
-
-    def fit(self, X, y=None):
-        return self
 
     def _set_defaults(self, X):
         self.get_sample_df(X)
@@ -47,11 +49,15 @@ class RandomFeatureElimination(CleanerBase):
         assert self.feats_to_beat <= self.num_new_feats
         assert self.min_num_folds <= self.kfold_kwargs.get("n_splits")
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self.log("xgb feat elim...")
         self._set_defaults(X)
-        self.feat_dct = random_feats.run_random_feats(
-            self.sample_df.reset_index(drop=True),  # .set_index(self.ix_vars),
+        if self.sample_rate:
+            df = self.sample_df
+        else:
+            df = X
+        self.feat_dct, self.model_objects = random_feats.run_random_feats(
+            df,
             features=self.initial_feats,
             target=self.target_var,
             model_class=self.model_class,
@@ -60,6 +66,7 @@ class RandomFeatureElimination(CleanerBase):
             num_random_cols_to_beat=self.feats_to_beat,
             model_kwargs=self.params,
             kfold_kwargs=self.kfold_kwargs,
+            importance_type=self.importance_type,
         )
         feats = sorted(set([k for k in self.feat_dct.keys()] + self.mandatory))
         _ignore = self.ix_vars + [self.target_var] + self.ignore
