@@ -37,6 +37,7 @@ class CleanerBase:
         self.sample_df = None
         self.verbose = kwargs.get("verbose", True)
         self.fail_on_warning_ = bool(kwargs.get("fail_on_warning", False))
+        self.min_rows = kwargs.get("min_rows", 8)
 
     def log(self, msg, level="info"):
         """
@@ -89,7 +90,7 @@ class CleanerBase:
                 .compute()
             )
 
-    def get_sample_df(self, X, random_state=0, min_rows=100, partition_size="100MB"):
+    def get_sample_df(self, X, random_state=0, partition_size="100MB", min_rows=None):
         """
         Get data sample from either pandas or dask dataframe.
 
@@ -102,6 +103,8 @@ class CleanerBase:
         partition_size : str, default=100MB
             optional partition size for post-sample repartition.
         """
+        if not min_rows:
+            min_rows = self.min_rows
         if isinstance(X, pd.DataFrame):
             self._sample_pd(X, random_state=0)
         elif isinstance(X, dd.DataFrame):
