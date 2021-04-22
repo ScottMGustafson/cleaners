@@ -1,5 +1,6 @@
 black
 dask[complete]
+distributed
 dask-ml
 flake8
 flake8-polyfill
