@@ -4,7 +4,8 @@ import pandas as pd
 import pytest
 
 from cleaners import dataframe_ops
-from tests.make_data import make_fake_date_data
+
+from .make_data import make_fake_date_data
 
 
 def test_multi_index_pd_resets():

@@ -140,12 +140,7 @@ class RandomFeatureElimination(CleanerBase):
 
 class MultiTargetRandomFeatureElimination(CleanerBase):
     def __init__(
-        self,
-        target_var_lst,
-        params_lst,
-        model_class_lst,
-        feature_dump_path,
-        **kwargs,
+        self, target_var_lst, params_lst, model_class_lst, feature_dump_path, **kwargs,
     ):
         super().__init__(**kwargs)
         self.target_var_lst = target_var_lst

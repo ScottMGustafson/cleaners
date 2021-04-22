@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from cleaners.impute import ImputeByValue
-from tests.make_data import make_fake_impute_data
+
+from .make_data import make_fake_impute_data
 
 
 def test_impute_by_value_dd():

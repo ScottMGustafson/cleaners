@@ -1,9 +1,12 @@
+import dask.dataframe as dd
+import numpy as np
+import pandas as pd
 import pytest
 from pandas.api.types import CategoricalDtype
 
 from cleaners import indicators
-from cleaners.indicators import *
-from tests.make_data import get_types_classes_for_fake_data, make_fake_data
+
+from .make_data import get_types_classes_for_fake_data, make_fake_data
 
 
 def test_one_hot_encoding_str():
@@ -180,7 +183,7 @@ def test_one_hot_encoding_pd():
 
 @pytest.fixture
 def get_indicator_pd_setup():
-    obj = AddIndicators(feats=["a", "b", "c"])
+    obj = indicators.AddIndicators(feats=["a", "b", "c"])
     X = make_fake_data(to_pandas=True)
     obj.get_sample_df(X, random_state=0, min_rows=1)
     obj.feat_type_dct, obj.feat_class_dct = get_types_classes_for_fake_data()
@@ -189,7 +192,7 @@ def get_indicator_pd_setup():
 
 @pytest.fixture
 def get_indicator_dd_setup():
-    obj = AddIndicators(feats=["a", "b", "c"], fail_on_warning=False, sample_rate=None)
+    obj = indicators.AddIndicators(feats=["a", "b", "c"], fail_on_warning=False, sample_rate=None)
     X = make_fake_data(to_pandas=False)
     obj.get_sample_df(X, random_state=0, min_rows=1)
     obj.feat_type_dct, obj.feat_class_dct = get_types_classes_for_fake_data()
@@ -202,7 +205,7 @@ def test_set_defaults_pd(get_indicator_pd_setup):
 
 
 def test_set_defaults_dd():
-    obj = AddIndicators(feats=["a", "b", "c"])
+    obj = indicators.AddIndicators(feats=["a", "b", "c"])
     X = make_fake_data(to_pandas=False)
     obj._set_defaults(X)
 
@@ -210,7 +213,7 @@ def test_set_defaults_dd():
 def test_process_feats():
     from cleaners import eda
 
-    obj = AddIndicators(
+    obj = indicators.AddIndicators(
         feats=["a", "b", "c"], unique_thresh=1, sample_rate=None, fail_on_warning=False
     )
     X = make_fake_data(to_pandas=False)
@@ -243,7 +246,7 @@ def test_get_ohe_cols_dd(get_indicator_dd_setup):
 def test_get_ohe_assertionerror(get_indicator_dd_setup):
     obj, X = get_indicator_dd_setup
     obj.ohe_cols = ["c", "not", "in", "data"]
-    with pytest.raises(AssertionError):
+    with pytest.raises(KeyError):
         obj.get_ohe_cols(X)
 
 
@@ -262,7 +265,7 @@ def test_get_cont_na_feats_dd(get_indicator_dd_setup):
 def test_get_cont_na_feats_assertionerror(get_indicator_dd_setup):
     obj, X = get_indicator_dd_setup
     obj.cont_na_feats = ["c", "not", "in", "data"]
-    with pytest.raises(AssertionError):
+    with pytest.raises(KeyError):
         obj.get_cont_na_feats(X)
 
 
@@ -271,7 +274,7 @@ def test_encode_nan_copy_pd(get_indicator_pd_setup, copy_it):
     obj, X = get_indicator_pd_setup
     col = "c"
     exp = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
-    res = encode_nans(X, col, new_col="c_nan", copy_data=copy_it)
+    res = indicators.encode_nans(X, col, new_col="c_nan", copy_data=copy_it)
     np.testing.assert_array_equal(res["c_nan"].values, exp)
 
 
@@ -280,7 +283,7 @@ def test_encode_nan_copy_dd(get_indicator_dd_setup, copy_it):
     obj, X = get_indicator_dd_setup
     col = "c"
     exp = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0])
-    res = encode_nans(X, col, new_col="c_nan", copy_data=copy_it).compute()
+    res = indicators.encode_nans(X, col, new_col="c_nan", copy_data=copy_it).compute()
     np.testing.assert_array_equal(res["c_nan"].values, exp)
 
 
@@ -289,7 +292,7 @@ def test_encode_nan_pd_fails_on_dupe_column_name(get_indicator_pd_setup):
     col = "c"
     X["c_nan"] = np.ones(10)
     with pytest.raises(AssertionError):
-        _ = encode_nans(X, col, new_col="c_nan")
+        _ = indicators.encode_nans(X, col, new_col="c_nan")
 
 
 @pytest.mark.parametrize(
@@ -299,7 +302,7 @@ def test_encode_nan_pd(col, exp, get_indicator_pd_setup):
     obj, X = get_indicator_pd_setup
     new_col = f"{col}_nan"
 
-    res = encode_nans(X, col, new_col=new_col)
+    res = indicators.encode_nans(X, col, new_col=new_col)
     np.testing.assert_array_equal(res[new_col].values, np.array(exp))
 
 
@@ -310,7 +313,7 @@ def test_encode_nan_dd(col, exp, get_indicator_dd_setup):
     obj, X = get_indicator_dd_setup
     new_col = f"{col}_nan"
 
-    res = encode_nans(X, col, new_col=new_col).compute()
+    res = indicators.encode_nans(X, col, new_col=new_col).compute()
     np.testing.assert_array_equal(res[new_col].values, np.array(exp))
 
 
@@ -319,11 +322,11 @@ def test_encode_nan_dd_copy(get_indicator_dd_setup):
     new_col = "b_nan"
     col = "b"
 
-    res = encode_nans(X, col, new_col=new_col, copy_data=True).compute()
+    res = indicators.encode_nans(X, col, new_col=new_col, copy_data=True).compute()
     assert new_col not in X.columns
     assert new_col in res.columns
 
-    res = encode_nans(X, col, new_col=new_col, copy_data=False).compute()
+    res = indicators.encode_nans(X, col, new_col=new_col, copy_data=False).compute()
     assert new_col in X.columns
     assert new_col in res.columns
 

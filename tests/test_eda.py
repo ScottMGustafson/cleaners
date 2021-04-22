@@ -4,7 +4,8 @@ import pandas as pd
 import pytest
 
 from cleaners import eda
-from tests.make_data import make_fake_data, make_various_type_data
+
+from .make_data import make_fake_data, make_various_type_data
 
 
 def test_process_feats_fails_on_dask():
