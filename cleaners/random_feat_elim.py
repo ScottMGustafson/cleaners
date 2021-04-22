@@ -1,3 +1,5 @@
+"""Random feature elimination."""
+
 import os
 
 import yaml
