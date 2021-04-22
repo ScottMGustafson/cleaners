@@ -1,8 +1,8 @@
+import dask_ml.datasets as dask_datasets
 import numpy as np
 import pandas as pd
-from dask import dataframe as dd
-import dask_ml.datasets as dask_datasets
 import sklearn.datasets as sklearn_datasets
+from dask import dataframe as dd
 
 
 def make_date_data(num_periods=10, num_feats=5, npartitions=2, to_dask=False, **regression_kwargs):
