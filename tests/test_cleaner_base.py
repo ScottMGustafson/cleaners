@@ -1,7 +1,8 @@
 import pandas as pd
 import pytest
 
-from cleaners.cleaner_base import CleanerBase, DaskDataFrameNotSampled, DataTooSmallForEDA
+from cleaners.cleaner_base import (CleanerBase, DaskDataFrameNotSampled,
+                                   DataTooSmallForEDA)
 
 from .make_data import make_fake_data
 

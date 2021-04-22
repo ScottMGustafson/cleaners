@@ -37,6 +37,7 @@ def test_random_feets_defaults(dask_client):
     for k in mandatory:
         assert k in obj.initial_feats
 
+
 @pytest.mark.skip
 @pytest.mark.regression
 def test_random_feets(dask_client):
@@ -71,7 +72,6 @@ def test_random_feets(dask_client):
     )
 
     obj.fit(X)
-
 
     assert len(obj.remaining_feats) >= n_informative
     for k in ignore + ix_vars + ["target"]:
