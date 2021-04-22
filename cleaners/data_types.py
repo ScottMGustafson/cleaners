@@ -20,7 +20,8 @@ def _infer_type(ser, type_list=None):
 def infer_data_types(df, type_list=None):
     """Infer data types by trial and error."""
     type_dct = {}
-    assert isinstance(df, pd.DataFrame), "Only pd dataframes supported here"
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Only pd dataframes supported here")
     for k in df.columns:
         type_dct[k] = _infer_type(df[k], type_list=type_list)
     return type_dct

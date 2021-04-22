@@ -68,7 +68,7 @@ class DropMostlyNaN(CleanerBase):
     def _validate_missing(self, X):
         assert not any(
             [x in self.mandatory for x in self.drop_cols]
-        ), "drop_cols and mandatory overlap"
+        ), "drop_cols and mandatory_feats overlap"
         missing_cols = [x for x in self.drop_cols if x not in X.columns]
         if not self.skip_if_missing:
             assert len(missing_cols) == 0, "missing one or more columns from dataframe: {}".format(

@@ -15,7 +15,6 @@ class DropNamedCol(CleanerBase):
         self.skip_on_fail = skip_on_fail
 
     def transform(self, X):  # noqa: D102
-
         assert not any(
             [x in self.mandatory for x in self.drop_cols]
         ), "cannot drop mandatory_feats columns: {}".format(self.mandatory)
@@ -23,7 +22,7 @@ class DropNamedCol(CleanerBase):
         for col in self.drop_cols:
             try:
                 X = X.drop(columns=[col])
-            except KeyError:
+            except (KeyError, ValueError) as e:
                 if not self.skip_on_fail:
                     raise
         return X

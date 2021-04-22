@@ -3,7 +3,6 @@
 import copy
 
 import dask.dataframe as dd
-import numpy as np
 import pandas as pd
 from dask_ml.preprocessing import Categorizer, DummyEncoder
 
@@ -24,18 +23,31 @@ class AddIndicators(CleanerBase):
         expected indicators during scoring
     """
 
-    def __init__(self, unique_thresh=6, ignore=("target", "date", "symbol"), **kwargs):
+    def __init__(self, unique_thresh=6, **kwargs):
         """
         Add indicators to data without imputing missings.
 
         Parameters
         ----------
         unique_thresh : int, default=6
-        ignore : iterable, default=``("target", "date", "symbol")``
+
+        Other Parameters
+        ----------------
+        feats : list
+        feat_type_dict : dict
+        feat_class_dict : dict
+        ohe_cols : list
+            columns that should get one-hot encoded.
+        cont_na_feats : list
+            continuous feats which will get nan indicators.
+        expected_indicators : list
+        impute_value : numeric
+        ohe_categories : dict
+        drop_first : bool
         """
         super(AddIndicators, self).__init__(**kwargs)
         self.unique_thresh = unique_thresh
-        self.ignore = ignore
+        self.ignore = kwargs.get("ignore", [])
         self.feats = kwargs.get("feats", [])
         self.feat_type_dct = kwargs.get("feat_type_dct")
         self.feat_class_dct = kwargs.get("feat_class_dct")
@@ -49,7 +61,7 @@ class AddIndicators(CleanerBase):
         self.drop_first = kwargs.get("drop_first")
 
     def _set_defaults(self, X):
-        if not self.feats:
+        if len(self.feats) == 0:
             self.feats = [x for x in X.columns if x not in self.ignore]
 
         self.get_sample_df(X, random_state=0)
@@ -69,18 +81,15 @@ class AddIndicators(CleanerBase):
     def get_ohe_cols(self, X):
         """Determine which columns should be one-hot-encoded."""
         if not self.ohe_cols:
-            self.ohe_cols = list(
-                sorted(
-                    set(
-                        eda.get_type_lst(self.feat_class_dct, "categorical", self.ignore)
-                        + eda.get_type_lst(self.feat_class_dct, "binary", self.ignore)
-                        + eda.get_type_lst(self.feat_type_dct, "object", self.ignore)
-                    )
+            self.ohe_cols = sorted(
+                set(
+                    eda.get_type_lst(self.feat_class_dct, "categorical", self.ignore)
+                    + eda.get_type_lst(self.feat_class_dct, "binary", self.ignore)
+                    + eda.get_type_lst(self.feat_type_dct, "object", self.ignore)
                 )
             )
-        assert all([col in X.columns for col in self.ohe_cols]), "not all cols in data: {}".format(
-            self.ohe_cols
-        )
+        if any(col not in X.columns for col in self.ohe_cols):
+            raise KeyError(f"not all cols in data: {self.ohe_cols}")
 
         # self._set_ohe_categories()
 
@@ -89,9 +98,8 @@ class AddIndicators(CleanerBase):
         if not self.cont_na_feats:
             num_cols = eda.get_type_lst(self.feat_type_dct, "numeric", self.ignore)
             self.cont_na_feats = [x for x in num_cols if self.feat_class_dct[x] == "continuous"]
-        assert all(
-            [col in X.columns for col in self.cont_na_feats]
-        ), "not all cols in data: {}".format(self.cont_na_feats)
+        if any(col not in X.columns for col in self.cont_na_feats):
+            raise KeyError("not all cols in data: {}".format(self.cont_na_feats))
 
     def scoring_transform(self, X):
         """Transform to be used when scoring new data on an existing model.
@@ -130,7 +138,6 @@ class AddIndicators(CleanerBase):
             category_dct=self.ohe_categories,
             drop_first=self.drop_first,
         )
-        res = res.repartition(partition_size="100MB").perist()
         return res
 
     def _set_ohe_categories(self):
@@ -178,15 +185,12 @@ class AddIndicators(CleanerBase):
 def _check_dummies(X, dummies, col):
     try:
         assert_no_duplicate_columns(dummies)
-    except AssertionError:
-        print("\n\ncolumn name: \n-----------------------------------", col)
-        print("dummies: {}\n".format(sorted(dummies.columns.tolist())))
-        print(
-            "unique values already in data: {}\n-----------------------------------\n".format(
-                X[col].unique()
-            )
+    except IndexError:
+        raise IndexError(
+            f"\n\ncolumn name: {col}\n-----------------------------------"
+            + f"dummies: {sorted(dummies.columns.tolist())}\n"
+            + f"unique values already in data: {X[col].unique()}\n-----------------------------------\n"
         )
-        raise
 
 
 def _validate_categories(categories):
@@ -365,10 +369,10 @@ def _make_dummy_cols(
 
     if category_dct:
         _validate_category_dict(category_dct, cols)
-
-    assert all(
-        [x in X.columns for x in cols]
-    ), f"Not all requested columns in data: {[x for x in cols if x not in X.columns]}"
+    if not all([x in X.columns for x in cols]):
+        raise ValueError(
+            f"Not all requested columns in data: {[x for x in cols if x not in X.columns]}"
+        )
     old_cols = X.columns  # all columns currently in X
     X = one_hot_encode(X, cols, categories=category_dct, drop_first=drop_first)
     added_indicators.extend([x for x in X.columns if x not in old_cols])  # columns just added

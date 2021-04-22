@@ -148,7 +148,7 @@ def get_type_lst(feat_type_dct, feat_type, exclude_lst):
 
 def find_relevant_columns(lst, model_feats, mandatory):
     """Find items where item is in model_feats or mandatory_feats cols."""
-    return [x for x in lst if any([x in y for y in model_feats + mandatory])]
+    return [x for x in lst if any(x in y for y in model_feats + mandatory)]
 
 
 @fail_on_dask
@@ -169,7 +169,7 @@ def process_feats(df, unique_thresh=0.01, feats=None):
     """
     if any(df.columns.duplicated()):
         lst = df.loc[:, df.columns.duplicated()].columns.tolist()
-        raise Exception(f"The following columns are duplicated: {sorted(list(set(lst)))}")
+        raise Exception(f"The following columns are duplicated: {sorted(set(lst))}")
 
     if not feats:
         feats = df.columns.tolist()

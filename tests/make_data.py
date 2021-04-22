@@ -1,23 +1,32 @@
+import dask_ml.datasets as dask_datasets
 import numpy as np
 import pandas as pd
-from dask import dataframe as dd
-import dask_ml.datasets as dask_datasets
 import sklearn.datasets as sklearn_datasets
+from dask import dataframe as dd
 
 
-def make_date_data(num_periods=10, num_feats=5, npartitions=2, to_dask=False, **regression_kwargs):
-    dates = pd.date_range("2001-01-01", periods=num_periods, freq="D")
+def make_date_data(
+    n_samples=10, n_features=5, npartitions=2, to_dask=False, regressor=False, **kwargs
+):
+    dates = pd.date_range("2001-01-01", periods=n_samples, freq="D")
     days = dates.day_of_week
     df = pd.DataFrame(
-        dict(date=dates, day_of_week=days, cum_sum=pd.Series(np.ones(num_periods)).cumsum())
+        dict(date=dates, day_of_week=days, cum_sum=pd.Series(np.ones(n_samples)).cumsum())
     )
     df["day_of_week"] = df["date"].dt.day_of_week
 
-    X, y = sklearn_datasets.make_regression(
-        n_samples=num_periods, n_features=num_feats, **regression_kwargs
-    )
+    if regressor:
+        X, y = sklearn_datasets.make_regression(
+            n_samples=n_samples, n_features=n_features, **kwargs
+        )
+    else:
+        X, y = sklearn_datasets.make_classification(
+            n_samples=n_samples, n_features=n_features, **kwargs
+        )
     df = pd.concat([df, pd.DataFrame(X), pd.DataFrame({"target": y})], ignore_index=True, axis=1)
-    df.columns = ["date", "day_of_week", "cumsum"] + [i for i in range(X.shape[1])] + ["target"]
+    df.columns = (
+        ["date", "day_of_week", "cumsum"] + [f"{i}" for i in range(X.shape[1])] + ["target"]
+    )
     df.set_index("date")
     if to_dask:
         return dd.from_pandas(df, npartitions=npartitions)
