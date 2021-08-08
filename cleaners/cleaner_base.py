@@ -143,7 +143,7 @@ class CleanerBase:
         """Dummy set defaults."""
         pass
 
-    def fit(self, X, y=None):  # pylint: disable=unused-argument
+    def fit(self, X, y=None, **kwargs):  # pylint: disable=unused-argument
         """Dummy fit method."""
         return self
 
