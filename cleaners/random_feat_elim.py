@@ -29,6 +29,9 @@ class RandomFeatureElimination(CleanerBase):
         min_num_folds=4,
         importance_type="total_gain",
         feature_dump_path=None,
+        sample_rate=None,
+        initial_feats=None,
+        kfold_kwargs=None,
         **kwargs,
     ):
         """
@@ -74,11 +77,11 @@ class RandomFeatureElimination(CleanerBase):
         self.sample_df = None
         self.feat_dct = None
         self.model_objects = None
-        self.kfold_kwargs = kwargs.get("kfold_kwargs", dict(n_splits=5))
+        self.kfold_kwargs = kfold_kwargs or dict(n_splits=5)
         self.ignore = list(set(self.ix_vars + [self.target_var] + kwargs.get("ignore", [])))
-        self.initial_feats = kwargs.get("initial_feats", [])
-        self.sample_rate = kwargs.get("sample_rate")
-        self.drop = kwargs.get("drop", False)
+        self.initial_feats = initial_feats
+        self.sample_rate = sample_rate
+        self.drop = True
 
     def _set_defaults(self, X):
         self.get_sample_df(X)
@@ -103,7 +106,7 @@ class RandomFeatureElimination(CleanerBase):
             raise ValueError("Number of splits cannot be greater than number of folds")
         validate_feats(X, self.mandatory + self.initial_feats)
 
-    def transform(self, X):  # noqa: D102
+    def fit(self, X, y=None, **kwargs):
         self.log("xgb feat elim...")
         self._set_defaults(X)
         if self.sample_rate:
@@ -125,19 +128,18 @@ class RandomFeatureElimination(CleanerBase):
         self.remaining_feats = sorted(set(self.feat_dct.keys()))
 
         self.feat_dct = serializable_dict(self.feat_dct)
+        self.log("{} columns remain".format(len(self.remaining_feats)))
         if self.feature_dump_path:
             _dump_yaml(self.feat_dct, os.path.join(self.feature_dump_path, "feat_dict.yaml"))
             _dump_yaml(
                 self.remaining_feats, os.path.join(self.feature_dump_path, "remaining_feats.yaml")
             )
-        self.log("{} columns remain".format(len(self.remaining_feats)))
-        if self.drop:
-            drop_cols = [
-                x for x in X.columns if x not in self.remaining_feats + self.mandatory + self.ignore
-            ]
-            return X.drop(columns=drop_cols)
-        else:
-            return X
+
+    def transform(self, X):  # noqa: D102
+        if self.remaining_feats is None:
+            raise Exception("RandomFeatureElimination hasn't yet been fitted.")
+        keep_cols = sorted(list(set(self.remaining_feats + self.mandatory + self.ignore)))
+        return X[keep_cols]
 
 
 class MultiTargetRandomFeatureElimination(CleanerBase):
@@ -171,14 +173,9 @@ class MultiTargetRandomFeatureElimination(CleanerBase):
             for i in range(len(self.target_var_lst))
         ]
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None, **kwargs):
         for i, obj in enumerate(self.eliminators):
             self.eliminators[i] = obj.fit(X, y)
-        return self
-
-    def transform(self, X):
-        for i in range(len(self.eliminators)):
-            _ = self.eliminators[i].transform(X)
             self.feat_dct[i] = self.eliminators[i].feat_dct
             self.remaining_feats += self.eliminators[i].remaining_feats
         self.remaining_feats = sorted(set(self.remaining_feats))
@@ -189,10 +186,10 @@ class MultiTargetRandomFeatureElimination(CleanerBase):
             self.remaining_feats,
             os.path.join(self.feature_dump_path, "multi_remaining_feats.yaml"),
         )
-        if self.drop:
-            drop_cols = [
-                x for x in X.columns if x not in self.remaining_feats + self.mandatory + self.ignore
-            ]
-            return X.drop(columns=drop_cols)
-        else:
-            return X
+        return self
+
+    def transform(self, X):
+        if self.remaining_feats is None:
+            raise Exception("MultiTargetRandomFeatureElimination hasn't yet been fitted.")
+        keep_cols = sorted(list(set(self.remaining_feats + self.mandatory + self.ignore)))
+        return X[keep_cols]
