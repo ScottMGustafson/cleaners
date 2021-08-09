@@ -134,6 +134,7 @@ class RandomFeatureElimination(CleanerBase):
             _dump_yaml(
                 self.remaining_feats, os.path.join(self.feature_dump_path, "remaining_feats.yaml")
             )
+        return self
 
     def transform(self, X):  # noqa: D102
         if self.remaining_feats is None:
