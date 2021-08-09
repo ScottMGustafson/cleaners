@@ -79,7 +79,7 @@ class RandomFeatureElimination(CleanerBase):
         self.model_objects = None
         self.kfold_kwargs = kfold_kwargs or dict(n_splits=5)
         self.ignore = list(set(self.ix_vars + [self.target_var] + kwargs.get("ignore", [])))
-        self.initial_feats = initial_feats
+        self.initial_feats = initial_feats or []
         self.sample_rate = sample_rate
         self.drop = True
 
