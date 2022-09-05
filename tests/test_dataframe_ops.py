@@ -10,9 +10,9 @@ from .make_data import make_fake_date_data
 
 def test_multi_index_pd_resets():
     ix_list = ["date", "a"]
-    df = make_fake_date_data(to_pandas=True).set_index(ix_list)
+    df = make_fake_date_data(to_pandas=True)
     obj = dataframe_ops.CompositeIndex(ix_list=ix_list, drop=False, new_ix_name="index")
-    _ = obj.transform(df)
+    _ = obj.fit_transform(df)
 
 
 def test_multi_index_pd():
@@ -20,7 +20,7 @@ def test_multi_index_pd():
     df = make_fake_date_data(to_pandas=True)
     df["date"] = pd.to_datetime(df["date"])
     obj = dataframe_ops.CompositeIndex(ix_list=ix_list, drop=False, new_ix_name="index")
-    res = obj.transform(df)
+    res = obj.fit_transform(df)
     res_index = list(res.index.values)
     expected = [
         "2021-01-01-a",
@@ -42,7 +42,7 @@ def test_multi_index_dd():
     df = make_fake_date_data(to_pandas=False)
     df["date"] = df["date"].astype("M8[us]")
     obj = dataframe_ops.CompositeIndex(ix_list=ix_list, drop=False, new_ix_name="index")
-    res = obj.transform(df).compute()
+    res = obj.fit_transform(df).compute()
     res_index = list(res.index.values)
     expected = [
         "2021-01-01-a",
@@ -80,7 +80,7 @@ def test_join_df_pd_raises():
 
     obj = dataframe_ops.JoinDFs(df2, how="inner", join=True)
     with pytest.raises(AssertionError):
-        _ = obj.transform(df1)
+        _ = obj.fit_transform(df1)
 
 
 def test_join_df_pd():
@@ -89,7 +89,7 @@ def test_join_df_pd():
     df2 = df2.set_index("date")
 
     obj = dataframe_ops.JoinDFs(df2, how="inner", join=True)
-    res = obj.transform(df1)
+    res = obj.fit_transform(df1)
     exp = {"a": {"2021-01-03": 3}, "b": {"2021-01-03": 6}, "c": {"2021-01-03": "a"}}
     assert res.to_dict() == exp
 
@@ -100,7 +100,7 @@ def test_join_df_dd():
     df2 = dd.from_pandas(df2.set_index("date"), npartitions=1)
 
     obj = dataframe_ops.JoinDFs(df2, how="inner", join=True)
-    res = obj.transform(df1).compute()
+    res = obj.fit_transform(df1).compute()
     exp = {"a": {"2021-01-03": 3}, "b": {"2021-01-03": 6}, "c": {"2021-01-03": "a"}}
     assert res.to_dict() == exp
 
@@ -110,7 +110,7 @@ def test_merge_df_dd():
     df1 = dd.from_pandas(df1, npartitions=2)
     df2 = dd.from_pandas(df2, npartitions=1)
     obj = dataframe_ops.JoinDFs(df2, how="inner", join=False, ix_col="date")
-    res = obj.transform(df1).compute().set_index("date")
+    res = obj.fit_transform(df1).compute().set_index("date")
     exp = {"a": {"2021-01-03": 3}, "b": {"2021-01-03": 6}, "c": {"2021-01-03": "a"}}
     assert res.to_dict() == exp
 
@@ -118,7 +118,7 @@ def test_merge_df_dd():
 def test_ffill_pd():
     obj = dataframe_ops.IndexForwardFillna(ix_col="date", method="ffill")
     df = make_fake_date_data(to_pandas=True).set_index("date")
-    res = obj.transform(df)
+    res = obj.fit_transform(df)
     filled_nans = res[["b", "c"]].values[8]
     pre_arr = res[["b", "c"]].values[7]
     np.testing.assert_array_equal(filled_nans, pre_arr)
@@ -127,7 +127,7 @@ def test_ffill_pd():
 def test_ffill_dd():
     obj = dataframe_ops.IndexForwardFillna(ix_col="date", method="ffill")
     df = make_fake_date_data(to_pandas=False).set_index("date")
-    res = obj.transform(df).compute()
+    res = obj.fit_transform(df).compute()
     filled_nans = res[["b", "c"]].values[8]
     pre_arr = res[["b", "c"]].values[7]
     np.testing.assert_array_equal(filled_nans, pre_arr)

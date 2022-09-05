@@ -148,10 +148,16 @@ class CompositeIndex(CleanerBase):
         assert len(ix_list) > 1, "ix_list is size {}: must be > 1".format(len(ix_list))
 
     def fit(self, X, y=None, **kwargs):
+        if not any(x in X.columns for x in self.ix_list):
+            if all(x in X.index.names for x in self.ix_list):
+                raise IndexError("please unset any indexes before running CompositeIndex")
+            else:
+                raise IndexError(f"{self.ix_list} not found in data.")
         self.feature_names_in_ = list(X.columns)
         assert all(
             x in self.feature_names_in_ for x in self.ix_list
         ), f"{self.ix_list} not present in data."
+        return self
 
     def transform(self, X):  # noqa: D102
         self._check_input_features(X)

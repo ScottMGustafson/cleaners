@@ -1,8 +1,8 @@
+import numpy as np
+import pandas as pd
 import pytest
 from dask.distributed import Client, LocalCluster
 from sklearn.datasets import make_classification
-import pandas as pd
-import numpy as np
 
 
 @pytest.fixture(scope="session")

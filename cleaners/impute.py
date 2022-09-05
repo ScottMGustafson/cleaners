@@ -1,5 +1,9 @@
 """
 Imputation utilities.
+
+Really the only value add here is an ever-so-slightly easier way to
+manage diff behavior for diff columns.  If this isn't a big deal,
+just use dask_ml.impute.SimpleImputer directly.
 """
 
 import dask.dataframe as dd

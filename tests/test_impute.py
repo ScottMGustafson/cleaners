@@ -1,8 +1,9 @@
+import dask.dataframe as dd
 import numpy as np
 import pytest
 
 from cleaners.impute import ImputeByValue
-import dask.dataframe as dd
+
 from .make_data import make_fake_impute_data
 
 
@@ -58,12 +59,13 @@ def impute_dask_smoke_test(make_pd_data):
 def test_impute_by_value_dd():
     fake_ddf = make_fake_impute_data(to_pandas=False)
     imputer = ImputeByValue(
-        missing_values=np.nan,
-        strategy="constant",
-        add_indicator=False,
-        copy=False,
         cols=["a", "b"],
-        fill_value=1,
+        imputer_kwargs=dict(
+            strategy="constant",
+            fill_value=1,
+            add_indicator=False,
+            copy=False,
+        ),
     )
 
     ones = np.ones(10)
@@ -83,12 +85,13 @@ def test_impute_by_value_dd():
 def test_impute_by_value_pd():
     fake_df = make_fake_impute_data(to_pandas=True)
     imputer = ImputeByValue(
-        missing_values=np.nan,
-        strategy="constant",
-        add_indicator=False,
-        copy=False,
         cols=["a", "b"],
-        fill_value=1,
+        imputer_kwargs=dict(
+            strategy="constant",
+            fill_value=1,
+            add_indicator=False,
+            copy=False,
+        ),
     )
 
     ones = np.ones(10)
