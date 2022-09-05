@@ -1,5 +1,8 @@
 import pytest
 from dask.distributed import Client, LocalCluster
+from sklearn.datasets import make_classification
+import pandas as pd
+import numpy as np
 
 
 @pytest.fixture(scope="session")
@@ -40,3 +43,29 @@ def pytest_runtest_setup(item):
     if envnames:
         if item.config.getoption("-E") not in envnames:
             pytest.skip("test requires env in {!r}".format(envnames))
+
+
+@pytest.fixture()
+def make_pd_data():
+    n_samples = 10000
+    n_bin = 5
+    n_cat = 5
+    n_float = 5
+    n_dupes = 5
+    rs = np.random.RandomState(0)
+    # make floats
+    X = make_classification(n_samples=n_samples, n_features=n_float, random_state=0)[0]
+    df = pd.DataFrame(X, columns=[f"var_{i}" for i in range(X.shape[1])])
+
+    # make cats
+    for i in range(n_cat):
+        df[f"cat_{i}"] = rs.choice(
+            ["a", "b", "c", "d", "e", np.nan], p=[0.2, 0.2, 0.2, 0.2, 0.15, 0.05], size=n_samples
+        )
+    # make binary
+    for i in range(n_bin):
+        df[f"bin_{i}"] = rs.choice([1.0, 0, np.nan], p=[0.45, 0.45, 0.1], size=n_samples)
+
+    for x in rs.choice(df.columns.to_list(), size=n_dupes):
+        df[x + "_dupe"] = df[x].copy()
+    return df
