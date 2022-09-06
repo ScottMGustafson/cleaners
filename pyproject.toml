@@ -1,7 +1,7 @@
 
 [tool.black]
 line-length = 100
-target-version = ['py36']
+target-version = ['py310']
 exclude = '''
 /(
     \.eggs
@@ -25,7 +25,7 @@ name = "cleaners"
 version = "0.1.0"
 description = "dask/pandas cleaners for your data"
 authors = ["scottmgustafson <s1gustaf@gmail.com>"]
-license = "MIT"
+license = "GNU GPL"
 readme = "README.md"
 
 [tool.poetry.dependencies]
