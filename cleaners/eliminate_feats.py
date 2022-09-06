@@ -1,20 +1,24 @@
 from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
-
+import pandas as pd
 
 class BaseDropColsMixin:
     def __init__(self, *args, **kwargs):
         super(BaseDropColsMixin, self).__init__(*args, **kwargs)
         self.feature_names_in_ = None
-        self.drop_cols_=None
+        self.drop_cols_ = None
+
     def transform(self, X):  # noqa: D102
-        return X.drop(columns=self.drop_cols_)
+        if self.drop_cols_ is None:
+            return X
+        return X.drop(columns=list(self.drop_cols_))
 
     def get_feature_names_out(self, input_features=None):  # noqa: D102
         input_features = input_features or self.feature_names_in_
         if not all(x in input_features for x in self.drop_cols_):
             raise IndexError(
-                f"Trying to drop some columns not present in data: from {input_features}, trying to drop {self.drop_cols_}")
+                f"Trying to drop some columns not present in data: from {input_features}, trying to drop {self.drop_cols_}"
+            )
         return [x for x in input_features if x not in self.drop_cols_]
 
 
@@ -57,18 +61,15 @@ class DropMostlyNaN(BaseDropColsMixin, CleanerBase):
     def __init__(
         self,
         nan_frac_thresh=0.5,
-        drop_cols=(),
         mandatory=("target", "date", "symbol"),
         skip_if_missing=True,
-        apply_score_transform=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.nan_frac_thresh = nan_frac_thresh
         self.mandatory = mandatory
         self.skip_if_missing = skip_if_missing
-        self.drop_cols = list(drop_cols)
-        self.apply_score_transform = apply_score_transform or len(drop_cols) > 0
+        self.drop_cols_ = []
         self.sample_rate = kwargs.get("sample_rate")
         self.sample_df = None
 
@@ -85,26 +86,29 @@ class DropMostlyNaN(BaseDropColsMixin, CleanerBase):
 
     def _validate_missing(self, X):
         assert not any(
-            [x in self.mandatory for x in self.drop_cols]
+            [x in self.mandatory for x in self.drop_cols_]
         ), "drop_cols and mandatory_feats overlap"
-        missing_cols = [x for x in self.drop_cols if x not in X.columns]
+        missing_cols = [x for x in self.drop_cols_ if x not in X.columns]
         if not self.skip_if_missing:
             assert len(missing_cols) == 0, "missing one or more columns from dataframe: {}".format(
                 missing_cols
             )
         else:
-            self.drop_cols = missing_cols
+            self.drop_cols_ = missing_cols
 
     def fit(self, X, y=None, **kwargs):
         self.log("dropping mostly NaN cols")
         self.get_sample_df(X)
         sz = self.sample_df.index.size
         cols = [x for x in self.sample_df.columns if x not in self.mandatory]
+
         nan_frac = self.sample_df[cols].isna().sum() / sz
-        self.drop_cols += nan_frac[nan_frac > self.nan_frac_thresh].index.tolist()
-        self.drop_cols = sorted(list(set(self.drop_cols)))
-        self.log("dropping {} columns".format(len(self.drop_cols)))
+        self.drop_cols_ += nan_frac[nan_frac > self.nan_frac_thresh].index.tolist()
+
+        self.drop_cols_ = sorted(list(set(self.drop_cols_)))
+        self.log("dropping {} columns".format(len(self.drop_cols_)))
         self.feature_names_in_ = cols
+        return self
 
 
 class HighCorrelationElim(BaseDropColsMixin, CleanerBase):
@@ -146,5 +150,7 @@ class HighCorrelationElim(BaseDropColsMixin, CleanerBase):
         self.remaining_feats = list(
             set([x for x in X.columns if x not in self.drop_cols_] + list(self.mandatory))
         )
-        self.log(f"{len(self.remaining_feats)} columns will remain after dropping {len(self.drop_cols_)} columns")
-
+        self.log(
+            f"{len(self.remaining_feats)} columns will remain after dropping {len(self.drop_cols_)} columns"
+        )
+        return self
