@@ -6,6 +6,16 @@ from cleaners.cleaner_base import CleanerBase
 
 
 class DropNamedCol(CleanerBase):
+    """
+    Drop columns by Name.
+
+    Parameters
+    ----------
+    drop_cols : list
+    mandatory : list
+    skip_on_fail : bool
+    """
+
     def __init__(
         self, drop_cols, mandatory=("target", "date", "symbol"), skip_on_fail=True, **kwargs
     ):
@@ -44,6 +54,8 @@ class DropNamedCol(CleanerBase):
 
 
 class ReplaceBadColnameChars(CleanerBase):
+    """Replace bad column names with characters not in `[, ]<>`."""
+
     def __init__(self, bad_chars="[, ]<>", repl_dct=None, **kwargs):
         super().__init__(**kwargs)
         self.bad_chars = bad_chars
@@ -84,9 +96,18 @@ class ReplaceBadColnameChars(CleanerBase):
 
 
 class DropNa(CleanerBase):
+    """
+    Drop NaNs and infinities.
+
+    Parameters
+    ----------
+    subset : list
+    replace_infinities : bool
+    """
+
     def __init__(self, subset, replace_infinities=True, **kwargs):
         super().__init__(**kwargs)
-        self.subset = subset
+        self.subset = list(subset)
         self.replace_inf = replace_infinities
 
     def _repl_inf(self, X):
@@ -108,7 +129,21 @@ class DropNa(CleanerBase):
 
 
 class DropDuplicates(CleanerBase):
-    def __init__(self, silently_fix=False, df_identifier="", **kwargs):
+    """
+    Drop duplicate columns.
+
+    Parameters
+    ----------
+    silently_fix : bool (default=False)
+    df_identifier : str (default= `drop_dupes`)
+
+    Attributes
+    ----------
+    dupe_cols_ : list
+    feature_names_in_ : list
+    """
+
+    def __init__(self, silently_fix=False, df_identifier="drop_dupes", **kwargs):
         super().__init__(**kwargs)
         self.silently_fix = silently_fix
         self.df_identifier = df_identifier
@@ -129,11 +164,22 @@ class DropDuplicates(CleanerBase):
 
     def transform(self, X):  # noqa: D102
         if self.dupe_cols_ is None:
-            raise ValueError(f"DropDuplicates has not yhet been fitted.")
+            raise ValueError("DropDuplicates has not yet been fitted.")
         if len(self.dupe_cols_) > 0:
             return X.loc[:, ~self.dupe_cols_]
         return X
 
     def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
         input_features = input_features or self.feature_names_in_
         return [x for x in input_features if x in self.feature_names_in_]

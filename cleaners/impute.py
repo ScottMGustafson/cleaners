@@ -47,8 +47,7 @@ class ImputeByValue(CleanerBase):
         self.imputer_ = SimpleImputer(**self.imputer_kwargs)
         self.cols = cols
 
-    def fit(self, X, y=None, **kwargs):
-        """Fit method."""
+    def fit(self, X, y=None, **kwargs):  # noqa: D102
         if not self.cols:
             self.cols = X.columns.tolist()
 
@@ -84,7 +83,7 @@ class ImputeByValue(CleanerBase):
     def _transform_dd(self, X):
         return X.map_partitions(self._transform_pd)
 
-    def transform(self, X):
+    def transform(self, X):  # noqa: D102
         self._check_input_features(X)
         if isinstance(X, pd.DataFrame):
             return self._transform_pd(X)
@@ -93,5 +92,5 @@ class ImputeByValue(CleanerBase):
         else:
             raise TypeError(f"not supported for type: {type(X)}")
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features=None):  # noqa: D102
         return self.imputer_.get_feature_names_out(input_features)

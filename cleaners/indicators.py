@@ -1,10 +1,6 @@
 """Add Indicators to either build or scoring data without imputation."""
 
-import copy
-
-import dask.dataframe as dd
 import pandas as pd
-from dask_ml.preprocessing import Categorizer, DummyEncoder
 
 from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
@@ -100,7 +96,7 @@ class AddIndicators(CleanerBase):
                 self.ohe_categories[col] = list(unique_vals)
             self.added_indicators_.extend([f"{col}_{val}" for val in self.ohe_categories[col]])
 
-    def fit(self, X, y=None, **kwargs):
+    def fit(self, X, y=None, **kwargs):  # noqa: D102
         self.feature_names_in_ = X.columns.tolist()
         if len(self.added_indicators_) != 0:
             raise ValueError("Added indicators has been set already.  Is this right?")
@@ -155,9 +151,22 @@ class AddIndicators(CleanerBase):
         return self._make_dummy_cols(X)
 
     def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
         if input_features:
             if input_features != self.feature_names_in_:
-                raise NotImplemented("feature names out not implemented for partial feature lists.")
+                raise NotImplementedError(
+                    "feature names out not implemented for partial feature lists."
+                )
         if self.feature_names_out_ is None:
             raise ValueError("Feature names have not yet been computed.")
         else:

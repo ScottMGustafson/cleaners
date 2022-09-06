@@ -139,7 +139,7 @@ def classify_value_counts(df, col, unique_thresh=0.05, type_dct=None):
 
 def get_correlates(df, thresh=0.9, feats=None, **corr_kwargs):
     """
-    get correlate pairs with a correlation coeff greater that ``thresh``
+    Get correlate pairs with a correlation coeff greater that ``thresh``.
 
     Parameters
     ----------
@@ -167,25 +167,6 @@ def get_correlates(df, thresh=0.9, feats=None, **corr_kwargs):
         .sort_values(ascending=False)
     )
     return corr_pairs[corr_pairs > thresh]
-
-
-def get_high_corr_cols(df, rho_thresh, method="spearman"):
-    """
-    Get particularly strong correlates.
-
-    Parameters
-    ----------
-    df
-    rho_thresh
-    method
-
-    Returns
-    -------
-
-    """
-    corr_matrix = df.corr(method=method).abs()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
-    return [column for column in upper.columns if any(upper[column] > rho_thresh)]
 
 
 @fail_on_dask
@@ -226,7 +207,19 @@ def get_describe_df(df, unique_thresh=6, percentiles=None):
 
 @fail_on_dask
 def get_high_corr_cols(df, rho_thresh, method="spearman"):
-    """Get high-correlation columns."""
+    """
+    Get particularly strong correlates.
+
+    Parameters
+    ----------
+    df
+    rho_thresh
+    method
+
+    Returns
+    -------
+    list
+    """
     corr_matrix = df.corr(method=method).abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
     return [column for column in upper.columns if any(upper[column] > rho_thresh)]
