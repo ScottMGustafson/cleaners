@@ -134,6 +134,7 @@ class TwoWayInteractions(CleanerBase):
             self.subset = [x for x in self.subset if x in X.columns]
             self.feat_pairs = self._get_feat_pairs(X)
         self.feature_names_in_ = X.columns.tolist()
+        return self
 
     def transform(self, X):  # noqa: D102
         self.log("Applying {} two-way feature interactions".format(len(self.feat_pairs)))
