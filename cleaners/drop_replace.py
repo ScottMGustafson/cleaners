@@ -6,6 +6,16 @@ from cleaners.cleaner_base import CleanerBase
 
 
 class DropNamedCol(CleanerBase):
+    """
+    Drop columns by Name.
+
+    Parameters
+    ----------
+    drop_cols : list
+    mandatory : list
+    skip_on_fail : bool
+    """
+
     def __init__(
         self, drop_cols, mandatory=("target", "date", "symbol"), skip_on_fail=True, **kwargs
     ):
@@ -27,8 +37,25 @@ class DropNamedCol(CleanerBase):
                     raise
         return X
 
+    def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
+        input_features = input_features or self.feature_names_in_
+        return [x for x in input_features if x not in self.drop_cols]
+
 
 class ReplaceBadColnameChars(CleanerBase):
+    """Replace bad column names with characters not in `[, ]<>`."""
+
     def __init__(self, bad_chars="[, ]<>", repl_dct=None, **kwargs):
         super().__init__(**kwargs)
         self.bad_chars = bad_chars
@@ -43,13 +70,44 @@ class ReplaceBadColnameChars(CleanerBase):
             for sym in self.bad_chars:
                 _col = _col.replace(sym, "")
             self.repl_dct[col] = _col
+
         return X.rename(columns=self.repl_dct)
+
+    def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
+        input_features = input_features or self.feature_names_in_
+        _names_out = list(input_features)
+        for i, name in enumerate(_names_out):
+            try:
+                _names_out[i] = self.repl_dct[name]
+            except KeyError:
+                pass
+        return _names_out
 
 
 class DropNa(CleanerBase):
+    """
+    Drop NaNs and infinities.
+
+    Parameters
+    ----------
+    subset : list
+    replace_infinities : bool
+    """
+
     def __init__(self, subset, replace_infinities=True, **kwargs):
         super().__init__(**kwargs)
-        self.subset = subset
+        self.subset = list(subset)
         self.replace_inf = replace_infinities
 
     def _repl_inf(self, X):
@@ -71,18 +129,57 @@ class DropNa(CleanerBase):
 
 
 class DropDuplicates(CleanerBase):
-    def __init__(self, silently_fix=False, df_identifier="", **kwargs):
+    """
+    Drop duplicate columns.
+
+    Parameters
+    ----------
+    silently_fix : bool (default=False)
+    df_identifier : str (default= `drop_dupes`)
+
+    Attributes
+    ----------
+    dupe_cols_ : list
+    feature_names_in_ : list
+    """
+
+    def __init__(self, silently_fix=False, df_identifier="drop_dupes", **kwargs):
         super().__init__(**kwargs)
         self.silently_fix = silently_fix
         self.df_identifier = df_identifier
+        self.dupe_cols_ = None
 
-    def transform(self, X):  # noqa: D102
+    def fit(self, X, y=None):  # noqa: D102
+        self.dupe_cols_ = X.columns.duplicated()
+        if not self.dupe_cols_.any():
+            self.dupe_cols_ = []
+            self.feature_names_in_ = X.columns.tolist()
+            return self
+
+        self.feature_names_in_ = X.loc[:, ~self.dupe_cols_].columns.unique().tolist()
         self.log("checking dupes")
         if not self.silently_fix:
-            assert not any(X.columns.duplicated()), (
-                f"{self.df_identifier} data has duplicates:"
-                + f"{X.columns[X.columns.duplicated()].tolist()}"
-            )
-            return X
-        else:
-            return X.loc[:, ~X.columns.duplicated()]
+            raise IndexError(f"{self.df_identifier} data has duplicates:" + f"{self.dupe_cols_}")
+        return self
+
+    def transform(self, X):  # noqa: D102
+        if self.dupe_cols_ is None:
+            raise ValueError("DropDuplicates has not yet been fitted.")
+        if len(self.dupe_cols_) > 0:
+            return X.loc[:, ~self.dupe_cols_]
+        return X
+
+    def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
+        input_features = input_features or self.feature_names_in_
+        return [x for x in input_features if x in self.feature_names_in_]

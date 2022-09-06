@@ -63,17 +63,47 @@ class JoinDFs(CleanerBase):
         self.ix_col = ix_col
         self.how = how
 
-    def transform(self, X):  # noqa: D102
-        self.log("joining...")
+    def fit(self, X, y=None, **kwargs):
+        self.feature_names_in_ = X.columns.tolist()
+        self.check_intersect(X)
+        return self
+
+    def check_intersect(self, X):
+        _intersect = set(self.right_df.columns).intersection(X.columns)
         if self.join:
-            _intersect = set(self.right_df.columns).intersection(X.columns)
             assert not _intersect, "join: L and R dataframes have overlapping columns: {}".format(
                 _intersect
             )
-            X = X.join(self.right_df, how=self.how)
         else:
-            X = X.merge(self.right_df, on=self.ix_col, how=self.how)
-        return X.loc[:, ~X.columns.duplicated()]
+            assert len(_intersect) == 1
+            assert list(_intersect)[0] == self.ix_col
+
+    def transform(self, X):  # noqa: D102
+        self._check_input_features(X)
+        self.log("joining...")
+        self.check_intersect(X)
+        if self.join:
+            return X.join(self.right_df, how=self.how)
+        else:
+            return X.merge(self.right_df, on=self.ix_col, how=self.how)
+
+    def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
+        input_features = input_features or self.feature_names_in_
+        out = input_features + self.right_df.columns.tolist()
+        if not self.join:
+            del out[out.index(self.ix_col)]
+        return out
 
 
 class ResetIndex(CleanerBase):
@@ -83,6 +113,7 @@ class ResetIndex(CleanerBase):
         super(ResetIndex, self).__init__(**kwargs)
 
     def transform(self, X):  # noqa: D102
+
         return X.reset_index()
 
 
@@ -116,12 +147,29 @@ class CompositeIndex(CleanerBase):
         self.new_ix_name = new_ix_name
         assert len(ix_list) > 1, "ix_list is size {}: must be > 1".format(len(ix_list))
 
+    def fit(self, X, y=None, **kwargs):
+        if not any(x in X.columns for x in self.ix_list):
+            if all(x in X.index.names for x in self.ix_list):
+                raise IndexError("please unset any indexes before running CompositeIndex")
+            else:
+                raise IndexError(f"{self.ix_list} not found in data.")
+        self.feature_names_in_ = list(X.columns)
+        assert all(
+            x in self.feature_names_in_ for x in self.ix_list
+        ), f"{self.ix_list} not present in data."
+        return self
+
     def transform(self, X):  # noqa: D102
+        self._check_input_features(X)
         X = X.reset_index()
         X[self.new_ix_name] = X[self.ix_list[0]].astype(str)
         for col in self.ix_list[1:]:
             X[self.new_ix_name] += self.join_char + X[col].astype(str)
-        # if self.drop:
-        #     X = X.drop(self.ix_list, axis=1)
+        if self.drop:
+            X = X.drop(self.ix_list, axis=1)
+        self.old_ix_name_ = X.index.name
         X = X.set_index(self.new_ix_name, drop=self.drop)
         return X
+
+    def get_feature_names_out(self, input_features=None):
+        input_features = input_features or self.feature_names_in_

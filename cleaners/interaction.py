@@ -127,15 +127,32 @@ class TwoWayInteractions(CleanerBase):
                 raise TypeError(msg)
         return X
 
-    def transform(self, X):  # noqa: D102
+    def fit(self, X, y=None, **kwargs):  # noqa: D102
         self._set_defaults(X)
         if self.add_new_feats:
             self._get_interact_subset()
             self.subset = [x for x in self.subset if x in X.columns]
             self.feat_pairs = self._get_feat_pairs(X)
+        self.feature_names_in_ = X.columns.tolist()
+
+    def transform(self, X):  # noqa: D102
         self.log("Applying {} two-way feature interactions".format(len(self.feat_pairs)))
         X = self._apply_interactions(X)
         return X
+
+    def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
+        return self.feature_names_in_ + get_expected_pairs(self.feat_pairs, self.feature_names_in_)
 
 
 def get_expected_pairs(feat_pairs, feats):

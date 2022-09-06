@@ -1,9 +1,11 @@
 """ABC for data cleaners."""
 
 import logging
+from abc import ABC, abstractmethod
 
 import dask.dataframe as dd
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class DataTooSmallForEDA(Exception):
@@ -18,26 +20,42 @@ class DaskDataFrameNotSampled(Exception):
     pass
 
 
-class CleanerBase:
+class CleanerBase(ABC, TransformerMixin, BaseEstimator):
     """ABC for data cleaners."""
 
-    def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def __init__(
+        self,
+        allow_passthrough=True,
+        min_rows=1000,
+        fail_on_warning=False,
+        verbose=True,
+        logger_name="cleaners",
+        sample_df=None,
+        sample_rate=None,
+        **kwargs,
+    ):
         """
         Init for Cleaner base.
 
-        Other Parameters
-        ----------------
-        logger_name : str, default=None
-        sample_rate : float, default=None
-        verbose : boolean, default=True
-        fail_on_warning : boolean, default=False
+        Parameters
+        ----------
+        logger_name : str (default=`cleaners`)
+        verbose : boolean, (default=True)
+        fail_on_warning : boolean, (default=False)
+        min_rows : int (default=10)
+        allow_passthrough : bool (default=True)
+        sample_df : dataframe (optional)
+        sample_rate : float (optional)
         """
-        self.logger = logging.getLogger(kwargs.get("logger_name"))
-        self.sample_rate = kwargs.get("sample_rate")
-        self.sample_df = None
-        self.verbose = kwargs.get("verbose", True)
-        self.fail_on_warning_ = bool(kwargs.get("fail_on_warning", False))
-        self.min_rows = kwargs.get("min_rows", 8)
+        # super().__init__(**kwargs)
+        self.logger = logging.getLogger(logger_name)
+        self.sample_rate = sample_rate
+        self.sample_df = sample_df
+        self.verbose = verbose
+        self.fail_on_warning = fail_on_warning
+        self.min_rows = min_rows
+        self.allow_passthrough = allow_passthrough
+        self.feature_names_in_ = None
 
     def log(self, msg, level="info"):
         """
@@ -73,7 +91,7 @@ class CleanerBase:
 
     def _sample_dd(self, X, random_state=0, partition_size="100MB"):
         if not self.sample_rate:
-            self.fail_on_warning(
+            self._fail_on_warning(
                 "cleaners.cleaner_base.get_sample_df:\n"
                 + "Using entire dask collection as sample dataframe."
                 + "This means a single worker will have to handle "
@@ -112,14 +130,23 @@ class CleanerBase:
         else:
             raise TypeError("Type: {} not supported".format(type(X)))
         if self.sample_df.index.size < min_rows:
-            self.fail_on_warning(
+            self._fail_on_warning(
                 "cleaners.cleaner_base.get_sample_df:\n"
                 + "The sample dataframe is smaller than {} rows".format(min_rows)
                 + "This may not be large enough to adequately infer info about your data.",
                 exception=DataTooSmallForEDA,
             )
 
-    def fail_on_warning(self, msg, exception=Exception):
+    def _check_input_features(self, X):
+        assert all(
+            x in X.columns for x in self.feature_names_in_
+        ), f"missing columns {self.feature_names_in_}"
+        if not self.allow_passthrough:
+            assert sorted(X.columns.tolist()) == sorted(
+                self.feature_names_in_
+            ), "Feature names mismatch."
+
+    def _fail_on_warning(self, msg, exception=Exception):
         """
         Warn or raise an exception depending on the state of ``fail_on_warning_``.
 
@@ -134,19 +161,36 @@ class CleanerBase:
         -------
         None
         """
-        if self.fail_on_warning_:
+        if self.fail_on_warning:
             raise exception(msg)
         else:
             self.logger.warning(msg)
 
-    def _set_defaults(self, X):  # pylint: disable=unused-argument
+    def _set_defaults(self, X):
         """Dummy set defaults."""
         pass
 
-    def fit(self, X, y=None, **kwargs):  # pylint: disable=unused-argument
+    def fit(self, X, y=None, **kwargs):
         """Dummy fit method."""
+        self.feature_names_in_ = list(X.columns)
         return self
 
-    def transform(self, X):  # pylint: disable=no-self-use
+    @abstractmethod
+    def transform(self, X):
         """Dummy transform method."""
+
         return X
+
+    def get_feature_names_out(self, input_features=None):
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
+        return input_features or self.feature_names_in_

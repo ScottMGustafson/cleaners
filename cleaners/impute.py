@@ -6,8 +6,9 @@ manage diff behavior for diff columns.  If this isn't a big deal,
 just use dask_ml.impute.SimpleImputer directly.
 """
 
-from dask_ml.impute import SimpleImputer
-from numpy import nan
+import dask.dataframe as dd
+import pandas as pd
+from sklearn.impute import SimpleImputer
 
 from cleaners.cleaner_base import CleanerBase
 
@@ -28,16 +29,7 @@ class ImputeByValue(CleanerBase):
     https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html
     """
 
-    def __init__(
-        self,
-        missing_values=nan,
-        strategy="mean",
-        add_indicator=False,
-        copy=True,
-        cols=None,
-        fill_value=None,
-        **kwargs,
-    ):
+    def __init__(self, cols=None, allow_passthrough=True, imputer_kwargs=None, **kwargs):
         """
         Impute with dask_ml simple imputer.
 
@@ -45,36 +37,60 @@ class ImputeByValue(CleanerBase):
         ----------
         cols : list, default=None
             columns to operate on.  If none, then impute on all available columns
-        missing_values : str or numeric, default=nan
-        strategy: str, default="mean"
-            strategy for imputation. Allowed values are:
-            ``["mean", "median", "most_frequent", "constant"]``
-        fill_value : str or numeric, default=none
-        copy: boolean, default=True
-        add_indicator: boolean, default=True
         """
-        super(ImputeByValue, self).__init__(**kwargs)
-        self.imputer = SimpleImputer(
-            missing_values=missing_values,
-            strategy=strategy,
-            fill_value=fill_value,
-            verbose=bool(kwargs.get("verbose")),
-            copy=copy,
-            add_indicator=add_indicator,
-        )
+        super().__init__(**kwargs)
+        self.cols = cols
+        self.allow_passthrough = allow_passthrough
+
+        self.imputer_kwargs = imputer_kwargs or dict(copy=True, add_indicator=True, allow_nan=True)
+
+        self.imputer_ = SimpleImputer(**self.imputer_kwargs)
         self.cols = cols
 
-    def fit(self, X, y=None):
-        """Fit method."""
-        if self.cols:
-            self.imputer = self.imputer.fit(X[self.cols], y)
+    def fit(self, X, y=None, **kwargs):  # noqa: D102
+        if not self.cols:
+            self.cols = X.columns.tolist()
+
+        if isinstance(X, dd.DataFrame):
+            # sample to get pd info
+            self.get_sample_df(X)
+            self.imputer_ = self.imputer_.fit(self.sample_df[self.cols])
+        elif isinstance(X, pd.DataFrame):
+            self.imputer_ = self.imputer_.fit(X[self.cols], y)
         else:
-            self.imputer = self.imputer.fit(X, y)
+            raise TypeError(f"not supported for type: {type(X)}")
+
+        self.feature_names_in_ = self.cols
+        self.feature_names_out_ = self.imputer_.get_feature_names_out(
+            input_features=self.feature_names_in_
+        )
+
         return self
 
-    def transform(self, X):
+    def _transform_pd(self, X):
         """Transform method."""
-        if self.cols:
-            return self.imputer.transform(X[self.cols])
+        X_extra = X[[c for c in X.columns if c not in self.feature_names_in_]]
+        X_tr = pd.DataFrame(
+            self.imputer_.transform(X[self.feature_names_in_]),
+            columns=self.feature_names_out_,
+            index=X.index,
+        )
+        if self.allow_passthrough:
+            return pd.concat([X_tr, X_extra], axis=1)
         else:
-            return self.imputer.transform(X)
+            return X_tr
+
+    def _transform_dd(self, X):
+        return X.map_partitions(self._transform_pd)
+
+    def transform(self, X):  # noqa: D102
+        self._check_input_features(X)
+        if isinstance(X, pd.DataFrame):
+            return self._transform_pd(X)
+        elif isinstance(X, dd.DataFrame):
+            return self._transform_dd(X)
+        else:
+            raise TypeError(f"not supported for type: {type(X)}")
+
+    def get_feature_names_out(self, input_features=None):  # noqa: D102
+        return self.imputer_.get_feature_names_out(input_features)
