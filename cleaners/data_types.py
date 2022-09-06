@@ -50,7 +50,6 @@ class FixDTypes(CleanerBase):
         self.dtypes = infer_data_types(self.sample_df, type_list=self.type_lst)
         return self
 
-
     def transform(self, X):
         """Transform method."""
         return X.astype(self.dtypes)
