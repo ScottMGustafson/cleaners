@@ -115,21 +115,25 @@ class DropDuplicates(CleanerBase):
         self.dupe_cols_ = None
 
     def fit(self, X, y=None):  # noqa: D102
-        self.dupe_cols_ = X.columns[X.columns.duplicated()].tolist()
-        self.feature_names_in_ = X.columns.tolist()
+        self.dupe_cols_ = X.columns.duplicated()
+        if not self.dupe_cols_.any():
+            self.dupe_cols_ = []
+            self.feature_names_in_ = X.columns.tolist()
+            return self
 
+        self.feature_names_in_ = X.loc[:, ~self.dupe_cols_].columns.unique().tolist()
         self.log("checking dupes")
         if not self.silently_fix:
-            assert not any(self.dupe_cols_), (
-                f"{self.df_identifier} data has duplicates:" + f"{self.dupe_cols_}"
-            )
-            return self
+            raise IndexError(f"{self.df_identifier} data has duplicates:" + f"{self.dupe_cols_}")
         return self
 
     def transform(self, X):  # noqa: D102
-        _cols_out = [x for x in X.columns if x not in self.dupe_cols_]
-        return X[self.dupe_cols_]
+        if self.dupe_cols_ is None:
+            raise ValueError(f"DropDuplicates has not yhet been fitted.")
+        if len(self.dupe_cols_) > 0:
+            return X.loc[:, ~self.dupe_cols_]
+        return X
 
     def get_feature_names_out(self, input_features=None):
         input_features = input_features or self.feature_names_in_
-        return [x for x in input_features if x not in self.dupe_cols_]
+        return [x for x in input_features if x in self.feature_names_in_]

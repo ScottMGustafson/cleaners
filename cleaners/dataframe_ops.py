@@ -70,7 +70,7 @@ class JoinDFs(CleanerBase):
 
     def check_intersect(self, X):
         _intersect = set(self.right_df.columns).intersection(X.columns)
-        if not self.join:
+        if self.join:
             assert not _intersect, "join: L and R dataframes have overlapping columns: {}".format(
                 _intersect
             )

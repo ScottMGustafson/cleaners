@@ -41,7 +41,7 @@ def test_dropna():
     df.loc[9, "a"] = "NaN"
     ddf = dd.from_pandas(df, npartitions=2)
     obj = drop_replace.DropNa(["b", "c", "a"], replace_infinities=True)
-    res = obj.transform(ddf).compute()
+    res = obj.fit_transform(ddf).compute()
     assert res.index.size == 8, str(res)
 
 
@@ -51,7 +51,7 @@ def test_dropna_dd():
     df.loc[9, "a"] = "NaN"
     ddf = dd.from_pandas(df, npartitions=2)
     obj = drop_replace.DropNa(["b", "c", "a"], replace_infinities=True)
-    res = obj.transform(ddf).compute()
+    res = obj.fit_transform(ddf).compute()
     assert res.index.size == 8, str(res)
 
 
@@ -61,8 +61,8 @@ def test_drop_dupes_raises():
     df["d"] = df[["b"]].copy()
     df.columns = ["a", "b", "c", "b"]
     ddf = dd.from_pandas(df, npartitions=2)
-    with pytest.raises(AssertionError):
-        _ = obj.transform(ddf)
+    with pytest.raises(IndexError):
+        _ = obj.fit_transform(ddf)
 
 
 def test_drop_dupes():
@@ -71,5 +71,5 @@ def test_drop_dupes():
     df["d"] = df[["b"]].copy()
     df.columns = ["a", "b", "c", "b"]
     ddf = dd.from_pandas(df, npartitions=2)
-    res = obj.transform(ddf).compute()
+    res = obj.fit_transform(ddf).compute()
     assert len(res.columns) == 3, str(res)
