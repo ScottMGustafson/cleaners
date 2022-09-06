@@ -2,7 +2,23 @@ from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
 
 
-class DropUninformative(CleanerBase):
+class BaseDropColsMixin:
+    def __init__(self, *args, **kwargs):
+        super(BaseDropColsMixin, self).__init__(*args, **kwargs)
+        self.feature_names_in_ = None
+        self.drop_cols_=None
+    def transform(self, X):  # noqa: D102
+        return X.drop(columns=self.drop_cols_)
+
+    def get_feature_names_out(self, input_features=None):  # noqa: D102
+        input_features = input_features or self.feature_names_in_
+        if not all(x in input_features for x in self.drop_cols_):
+            raise IndexError(
+                f"Trying to drop some columns not present in data: from {input_features}, trying to drop {self.drop_cols_}")
+        return [x for x in input_features if x not in self.drop_cols_]
+
+
+class DropUninformative(BaseDropColsMixin, CleanerBase):
     def __init__(self, unique_thresh=6, mandatory=("target", "date", "symbol"), **kwargs):
         super().__init__(**kwargs)
         self.unique_thresh = unique_thresh
@@ -13,6 +29,7 @@ class DropUninformative(CleanerBase):
         self.remaining_feats = None
         self.sample_rate = kwargs.get("sample_rate")
         self.sample_df = None
+        self.drop_cols_ = None
 
     def _set_defaults(self, X):
         self.get_sample_df(X)
@@ -23,19 +40,20 @@ class DropUninformative(CleanerBase):
                 self.sample_df, unique_thresh=self.unique_thresh, feats=self.feats
             )
 
-    def transform(self, X):  # noqa: D102
+    def fit(self, X, y=None, **kwargs):
         self.log("dropping uninformative")
         self._set_defaults(X)
-        drop_cols = eda.get_uninformative(self.feat_class_dct, self.mandatory)
+        self.drop_cols_ = eda.get_uninformative(self.feat_class_dct, self.mandatory)
         self.remaining_feats = list(
-            set([x for x in X.columns if x not in drop_cols] + list(self.mandatory))
+            set([x for x in X.columns if x not in self.drop_cols_] + list(self.mandatory))
         )
-        drop_cols = [x for x in X.columns if x not in self.remaining_feats]
-        self.log("{} columns remain".format(len(self.remaining_feats)))
-        return X.drop(columns=drop_cols)
+        self.drop_cols_ = [x for x in X.columns if x not in self.remaining_feats]
+        self.log("{} columns will remain after dropping".format(len(self.remaining_feats)))
+        self.feature_names_in_ = X.columns.tolist()
+        return self
 
 
-class DropMostlyNaN(CleanerBase):
+class DropMostlyNaN(BaseDropColsMixin, CleanerBase):
     def __init__(
         self,
         nan_frac_thresh=0.5,
@@ -77,31 +95,19 @@ class DropMostlyNaN(CleanerBase):
         else:
             self.drop_cols = missing_cols
 
-    def build_transform(self, X):
-        """Transform build data."""
+    def fit(self, X, y=None, **kwargs):
+        self.log("dropping mostly NaN cols")
+        self.get_sample_df(X)
         sz = self.sample_df.index.size
         cols = [x for x in self.sample_df.columns if x not in self.mandatory]
         nan_frac = self.sample_df[cols].isna().sum() / sz
         self.drop_cols += nan_frac[nan_frac > self.nan_frac_thresh].index.tolist()
         self.drop_cols = sorted(list(set(self.drop_cols)))
         self.log("dropping {} columns".format(len(self.drop_cols)))
-        return X.drop(columns=self.drop_cols)
-
-    def score_transform(self, X):
-        """Transform score data."""
-        # TODO: this fails in tests...why?
-        self._validate_missing(X)
-        return X.drop(columns=self.drop_cols)
-
-    def transform(self, X):  # noqa: D102
-        self.log("dropping mostly NaN cols")
-        self.get_sample_df(X)
-        if self.apply_score_transform or self.drop_cols:
-            return self.score_transform(X)
-        return self.build_transform(X)
+        self.feature_names_in_ = cols
 
 
-class HighCorrelationElim(CleanerBase):
+class HighCorrelationElim(BaseDropColsMixin, CleanerBase):
     def __init__(self, unique_thresh=6, mandatory=("target", "date", "symbol"), **kwargs):
         super().__init__(**kwargs)
         self.unique_thresh = unique_thresh
@@ -131,18 +137,14 @@ class HighCorrelationElim(CleanerBase):
             [col in X.columns for col in self.num_cols]
         ), "num_cols not all in data: {}".format(self.num_cols)
 
-    def transform(self, X):  # noqa: D102
-        self.log("dropping high correlation cols")
+    def fit(self, X, y=None, **kwargs):
+        self.log("Checking for high correlation cols")
         self._set_defaults(X)
-        drop_cols = eda.get_high_corr_cols(
+        self.drop_cols_ = eda.get_high_corr_cols(
             self.sample_df[self.num_cols], rho_thresh=self.rho_thresh, method=self.method
         )
         self.remaining_feats = list(
-            set([x for x in X.columns if x not in drop_cols] + list(self.mandatory))
+            set([x for x in X.columns if x not in self.drop_cols_] + list(self.mandatory))
         )
-        self.log("{} columns remain".format(len(self.remaining_feats)))
-        if self.drop:
-            drop_cols = [x for x in X.columns if x not in self.remaining_feats]
-            return X.drop(columns=drop_cols)
-        else:
-            return X
+        self.log(f"{len(self.remaining_feats)} columns will remain after dropping {len(self.drop_cols_)} columns")
+
