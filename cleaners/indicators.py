@@ -11,6 +11,31 @@ class AddIndicators(CleanerBase):
     """
     Add indicators to data without imputing missings.
 
+    Parameters
+    ----------
+    unique_thresh : int, default=6
+    allow_nan : bool
+    raise_exception_on_unseen : bool
+    values_to_indicate : dict
+    ignore : list
+    feat_type_dict : dict
+    feat_class_dict : dict
+    feats : list
+    ohe_cols : list
+    ohe_categories : dict
+
+    Other Parameters
+    ----------------
+    feats : list
+    feat_type_dict : dict
+    feat_class_dict : dict
+    ohe_cols : list
+        columns that should get one-hot encoded.
+    cont_na_feats : list
+        continuous feats which will get nan indicators.
+    expected_indicators : list
+    ohe_categories : dict
+
     Attributes
     ----------
     added_indicator_columns : list
@@ -33,25 +58,6 @@ class AddIndicators(CleanerBase):
         ohe_categories=None,
         **kwargs,
     ):
-        """
-        Add indicators to data without imputing missings.
-
-        Parameters
-        ----------
-        unique_thresh : int, default=6
-
-        Other Parameters
-        ----------------
-        feats : list
-        feat_type_dict : dict
-        feat_class_dict : dict
-        ohe_cols : list
-            columns that should get one-hot encoded.
-        cont_na_feats : list
-            continuous feats which will get nan indicators.
-        expected_indicators : list
-        ohe_categories : dict
-        """
         super(AddIndicators, self).__init__(**kwargs)
         self.unique_thresh = unique_thresh
         self.ignore = ignore or []
