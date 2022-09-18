@@ -2,12 +2,6 @@
 import numpy as np
 
 
-def assert_no_duplicate_indices(df):
-    """Assert a df has no duped indexes."""
-    if any(df.set_index(["symbol", "date"]).index.duplicated()):
-        raise IndexError("duplicate indices present")
-
-
 def assert_no_duplicate_columns(df):
     """Assert a df has no duped columns."""
     if any(df.columns.duplicated()):
@@ -21,7 +15,7 @@ def cum_sum_index(df):
     df["cum_sum"] = df["temp_ix"].cumsum()
     df = df.set_index("cum_sum", drop=True)
     df = df.drop(columns=["temp_ix"])
-    return df.persist()
+    return df
 
 
 def sort_index(X):

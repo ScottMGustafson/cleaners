@@ -62,9 +62,8 @@ class TwoWayInteractions(CleanerBase):
         interact_feature_path=None,
         **kwargs,
     ):
-
         super(TwoWayInteractions, self).__init__(**kwargs)
-        self.max_new_feats = max_interact_feats
+        self.max_interact_feats = max_interact_feats
         self.seed = seed
         self.exclude = kwargs.get("exclude", [])
         self.subset = kwargs.get("subset", [])
@@ -97,10 +96,10 @@ class TwoWayInteractions(CleanerBase):
     def _sample_list(self, feat_pairs):
         random.seed(self.seed)
         random.shuffle(feat_pairs)
-        if len(feat_pairs) <= self.max_new_feats:
+        if len(feat_pairs) <= self.max_interact_feats:
             return feat_pairs
         else:
-            return feat_pairs[: self.max_new_feats]
+            return feat_pairs[: self.max_interact_feats]
 
     def _get_feat_pairs(self, X):
         feat_pairs = []
@@ -112,7 +111,7 @@ class TwoWayInteractions(CleanerBase):
                     raise ValueError(f"duplicate values found in subset: {x}")
                 feat_pairs.append((x, y))
 
-        if len(feat_pairs) > self.max_new_feats:
+        if len(feat_pairs) > self.max_interact_feats:
             feat_pairs = self._sample_list(feat_pairs)
 
         feat_pairs = _concat_list_of_tuples(feat_pairs, self.feat_pairs, list(X.columns))

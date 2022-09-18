@@ -1,5 +1,7 @@
+import dask.dataframe as dd
 import pytest
 
+from cleaners import util
 from cleaners.util import set_index, sort_index
 from tests.make_data import make_date_data
 
@@ -33,3 +35,17 @@ def test_sort_index_raises(to_dask):
     df = make_date_data(n_samples=10, to_dask=to_dask).sample(frac=1).reset_index()
     with pytest.raises(IndexError):
         _ = sort_index(df)
+
+
+def test_cumsum_index(make_pd_data):
+    df = make_date_data()
+    df_ = util.cum_sum_index(df)
+    assert df_.index.name == "cum_sum"
+    assert df_.index.values.min() == 1
+    assert df_.index.values.max() == len(df)
+
+    df_ = util.cum_sum_index(dd.from_pandas(df, npartitions=3))
+    df_ = df_.compute()
+    assert df_.index.name == "cum_sum"
+    assert df_.index.values.min() == 1
+    assert df_.index.values.max() == len(df)
