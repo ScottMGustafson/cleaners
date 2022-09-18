@@ -113,7 +113,6 @@ class ResetIndex(CleanerBase):
         super(ResetIndex, self).__init__(**kwargs)
 
     def transform(self, X):  # noqa: D102
-
         return X.reset_index()
 
 

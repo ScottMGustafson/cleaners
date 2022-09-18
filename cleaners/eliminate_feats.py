@@ -1,6 +1,7 @@
+import pandas as pd
+
 from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
-import pandas as pd
 
 
 class BaseDropColsMixin:

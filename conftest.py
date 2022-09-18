@@ -69,3 +69,48 @@ def make_pd_data():
     for x in rs.choice(df.columns.to_list(), size=n_dupes):
         df[x + "_dupe"] = df[x].copy()
     return df
+
+
+class MockClassifier:
+    """
+    Dummy classifier for unittests stolen from:
+    https://github.com/scikit-learn/scikit-learn/blob/f4e6690ac9222cd626412a3dd18c8e760b192c4e/sklearn/feature_selection/tests/test_rfe.py#L33
+    """
+
+    def __init__(self, foo_param=0, **kwargs):  # noqa: D102
+        self.foo_param = foo_param
+        self._kwargs = kwargs  # hidden kwargs reference
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def fit(self, X, y, **kwargs):  # noqa: D102
+        assert len(X) == len(y)
+        self.coef_ = np.ones(X.shape[1], dtype=np.float64)
+        return self
+
+    def predict(self, T):  # noqa: D102
+        return T.shape[0]
+
+    predict_proba = predict
+    decision_function = predict
+    transform = predict
+
+    def score(self, X=None, y=None):  # noqa: D102
+        return 0.0
+
+    def get_params(self, deep=True):  # noqa: D102
+        return dict({"foo_param": self.foo_param}, **self._kwargs)
+
+    def set_params(self, **params):  # noqa: D102
+        for k, v in params.items():
+            setattr(self, k, v)
+        return self
+
+    def _more_tags(self):  # noqa: D102
+        return {"allow_nan": True}
+
+
+@pytest.fixture(scope="function")
+def get_mock_classifier():
+    """Fixture to return a classifier class (not instance) that can be instantiated on demand."""
+    return MockClassifier

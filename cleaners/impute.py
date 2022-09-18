@@ -41,8 +41,9 @@ class ImputeByValue(CleanerBase):
         super().__init__(**kwargs)
         self.cols = cols
         self.allow_passthrough = allow_passthrough
-
-        self.imputer_kwargs = imputer_kwargs or dict(copy=True, add_indicator=True, allow_nan=True)
+        self.imputer_kwargs = imputer_kwargs or dict(
+            copy=True, add_indicator=True, strategy="constant", fill_value=-999999
+        )
 
         self.imputer_ = SimpleImputer(**self.imputer_kwargs)
         self.cols = cols
