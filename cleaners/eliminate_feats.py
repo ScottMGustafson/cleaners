@@ -1,10 +1,19 @@
-import pandas as pd
-
+"""Feature dropping utilities."""
 from cleaners import eda
 from cleaners.cleaner_base import CleanerBase
 
 
 class BaseDropColsMixin:
+    """
+    Mixin Class to add transform and feature_names_out.
+
+    Attributes
+    ----------
+    feature_names_in : list
+    drop_cols_ : list
+        list of columns to drop.
+    """
+
     def __init__(self, *args, **kwargs):
         super(BaseDropColsMixin, self).__init__(*args, **kwargs)
         self.feature_names_in_ = None
@@ -19,21 +28,60 @@ class BaseDropColsMixin:
         input_features = input_features or self.feature_names_in_
         if not all(x in input_features for x in self.drop_cols_):
             raise IndexError(
-                f"Trying to drop some columns not present in data: from {input_features}, trying to drop {self.drop_cols_}"
+                f"""
+                Trying to drop some columns not present in data:
+                from {input_features}, trying to drop {self.drop_cols_}
+                """
             )
         return [x for x in input_features if x not in self.drop_cols_]
 
 
 class DropUninformative(BaseDropColsMixin, CleanerBase):
-    def __init__(self, unique_thresh=6, mandatory=("target", "date", "symbol"), **kwargs):
+    """
+    Drop columns determined to be uninformative.
+
+    Parameters
+    ----------
+    unique_thresh : int
+    mandatory : list[str]
+    feats : list[str]
+    feat_type_dct : dict[str]
+    feat_class_dct : dict[str]
+    remaining_feats : list
+
+    Attributes
+    ----------
+    feature_names_in : list
+    drop_cols_ : list
+        list of columns to drop.
+
+    Other Parameters
+    ----------------
+    logger_name : str (default=`cleaners`)
+    verbose : boolean, (default=True)
+    fail_on_warning : boolean, (default=False)
+    min_rows : int (default=10)
+    allow_passthrough : bool (default=True)
+    sample_df : dataframe (optional)
+    sample_rate : float (optional)
+    """
+
+    def __init__(
+        self,
+        unique_thresh=6,
+        feats=None,
+        mandatory=None,
+        feat_type_dct=None,
+        feat_class_dct=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.unique_thresh = unique_thresh
-        self.mandatory = mandatory
-        self.feats = kwargs.get("feats")
-        self.feat_type_dct = kwargs.get("feat_type_dct")
-        self.feat_class_dct = kwargs.get("feat_class_dct")
-        self.remaining_feats = None
-        self.sample_rate = kwargs.get("sample_rate")
+        self.mandatory = mandatory or []
+        self.feats = feats or []
+        self.feat_type_dct = feat_type_dct
+        self.feat_class_dct = feat_class_dct
+        self.remaining_feats = []
         self.sample_df = None
         self.drop_cols_ = None
 
@@ -46,7 +94,7 @@ class DropUninformative(BaseDropColsMixin, CleanerBase):
                 self.sample_df, unique_thresh=self.unique_thresh, feats=self.feats
             )
 
-    def fit(self, X, y=None, **kwargs):
+    def fit(self, X, y=None, **kwargs):  # noqa : D102
         self.log("dropping uninformative")
         self._set_defaults(X)
         self.drop_cols_ = eda.get_uninformative(self.feat_class_dct, self.mandatory)
@@ -60,19 +108,44 @@ class DropUninformative(BaseDropColsMixin, CleanerBase):
 
 
 class DropMostlyNaN(BaseDropColsMixin, CleanerBase):
+    """
+    Drop columns which are mostly NaNs.
+
+    Parameters
+    ----------
+    mandatory : list[str]
+    nan_frac_thresh : float (default=0.5)
+    skip_if_missing : bool (default=True)
+
+    Attributes
+    ----------
+    feature_names_in : list
+    drop_cols_ : list
+        list of columns to drop.
+
+    Parameters
+    ----------
+    logger_name : str (default=`cleaners`)
+    verbose : boolean, (default=True)
+    fail_on_warning : boolean, (default=False)
+    min_rows : int (default=10)
+    allow_passthrough : bool (default=True)
+    sample_df : dataframe (optional)
+    sample_rate : float (optional)
+    """
+
     def __init__(
         self,
         nan_frac_thresh=0.5,
-        mandatory=("target", "date", "symbol"),
+        mandatory=None,
         skip_if_missing=True,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.nan_frac_thresh = nan_frac_thresh
-        self.mandatory = mandatory
+        self.mandatory = mandatory or []
         self.skip_if_missing = skip_if_missing
         self.drop_cols_ = []
-        self.sample_rate = kwargs.get("sample_rate")
         self.sample_df = None
 
     @staticmethod
@@ -98,7 +171,7 @@ class DropMostlyNaN(BaseDropColsMixin, CleanerBase):
         else:
             self.drop_cols_ = missing_cols
 
-    def fit(self, X, y=None, **kwargs):
+    def fit(self, X, y=None, **kwargs):  # noqa : D102
         self.log("dropping mostly NaN cols")
         self.get_sample_df(X)
         sz = self.sample_df.index.size
@@ -114,20 +187,56 @@ class DropMostlyNaN(BaseDropColsMixin, CleanerBase):
 
 
 class HighCorrelationElim(BaseDropColsMixin, CleanerBase):
-    def __init__(self, unique_thresh=6, mandatory=("target", "date", "symbol"), **kwargs):
+    """
+    Drop one of each pairs of highly-correlated columns.
+
+    Parameters
+    ----------
+    unique_thresh : int (default=6)
+    rho_thresh : float (default=0.98)
+    method : str (default='spearman')
+    drop : bool (default=False)
+    num_cols : list, optional
+    mandatory : list, optional
+    feat_class_dct : dict[str], optional
+    feat_type_dct : dict[str], optional
+    feats : list, optional
+
+    Other Parameters
+    ----------------
+    logger_name : str (default=`cleaners`)
+    verbose : boolean, (default=True)
+    fail_on_warning : boolean, (default=False)
+    min_rows : int (default=10)
+    allow_passthrough : bool (default=True)
+    sample_df : dataframe (optional)
+    sample_rate : float (optional)
+    """
+
+    def __init__(
+        self,
+        unique_thresh=6,
+        rho_thresh=0.98,
+        method="spearman",
+        drop=False,
+        num_cols=None,
+        mandatory=None,
+        feat_class_dct=None,
+        feat_type_dct=None,
+        feats=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.unique_thresh = unique_thresh
-        self.mandatory = mandatory
-        self.feats = kwargs.get("feats")
-        self.feat_type_dct = kwargs.get("feat_type_dct")
-        self.feat_class_dct = kwargs.get("feat_class_dct")
-        self.rho_thresh = kwargs.get("rho_thresh", 0.98)
-        self.method = kwargs.get("method", "spearman")
+        self.mandatory = mandatory or []
+        self.feats = feats or []
+        self.feat_type_dct = feat_type_dct
+        self.feat_class_dct = feat_class_dct
+        self.rho_thresh = rho_thresh
+        self.method = method
         self.remaining_feats = None
-        self.num_cols = kwargs.get("num_cols")
-        self.drop = kwargs.get("drop", False)
-        self.sample_rate = kwargs.get("sample_rate")
-        self.sample_df = None
+        self.num_cols = num_cols or []
+        self.drop = drop
 
     def _set_defaults(self, X):
         self.get_sample_df(X)
@@ -143,7 +252,7 @@ class HighCorrelationElim(BaseDropColsMixin, CleanerBase):
             [col in X.columns for col in self.num_cols]
         ), "num_cols not all in data: {}".format(self.num_cols)
 
-    def fit(self, X, y=None, **kwargs):
+    def fit(self, X, y=None, **kwargs):  # noqa : D102
         self.log("Checking for high correlation cols")
         self._set_defaults(X)
         self.drop_cols_ = eda.get_high_corr_cols(

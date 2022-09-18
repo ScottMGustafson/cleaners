@@ -21,7 +21,19 @@ class DaskDataFrameNotSampled(Exception):
 
 
 class CleanerBase(ABC, TransformerMixin, BaseEstimator):
-    """ABC for data cleaners."""
+    """
+    ABC for data cleaners.
+
+    Parameters
+    ----------
+    logger_name : str (default=`cleaners`)
+    verbose : boolean, (default=True)
+    fail_on_warning : boolean, (default=False)
+    min_rows : int (default=10)
+    allow_passthrough : bool (default=True)
+    sample_df : dataframe (optional)
+    sample_rate : float (optional)
+    """
 
     def __init__(
         self,
@@ -34,20 +46,6 @@ class CleanerBase(ABC, TransformerMixin, BaseEstimator):
         sample_rate=None,
         **kwargs,
     ):
-        """
-        Init for Cleaner base.
-
-        Parameters
-        ----------
-        logger_name : str (default=`cleaners`)
-        verbose : boolean, (default=True)
-        fail_on_warning : boolean, (default=False)
-        min_rows : int (default=10)
-        allow_passthrough : bool (default=True)
-        sample_df : dataframe (optional)
-        sample_rate : float (optional)
-        """
-        # super().__init__(**kwargs)
         self.logger = logging.getLogger(logger_name)
         self.sample_rate = sample_rate
         self.sample_df = sample_df
@@ -59,12 +57,11 @@ class CleanerBase(ABC, TransformerMixin, BaseEstimator):
 
     def log(self, msg, level="info"):
         """
-        Optional logging wrapper.
+        Log events.
 
-        Sends logging message only if self.verbose is true fo info
+        Wraps Logger and sends logging message only if self.verbose is true for info
         always sends warnings
-        If you'd prefer standard python logging,
-        use self.logger instead.
+        If you'd prefer standard python logging, use self.logger instead.
 
         Parameters
         ----------
@@ -167,18 +164,14 @@ class CleanerBase(ABC, TransformerMixin, BaseEstimator):
             self.logger.warning(msg)
 
     def _set_defaults(self, X):
-        """Dummy set defaults."""
         pass
 
-    def fit(self, X, y=None, **kwargs):
-        """Dummy fit method."""
+    def fit(self, X, y=None, **kwargs):  # noqa: D102
         self.feature_names_in_ = list(X.columns)
         return self
 
     @abstractmethod
-    def transform(self, X):
-        """Dummy transform method."""
-
+    def transform(self, X):  # noqa: D102
         return X
 
     def get_feature_names_out(self, input_features=None):

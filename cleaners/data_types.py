@@ -45,11 +45,10 @@ class FixDTypes(CleanerBase):
         self.dtypes = None
         self.random_state = random_state
 
-    def fit(self, X, y=None, **kwargs):
+    def fit(self, X, y=None, **kwargs):  # noqa : D102
         self.get_sample_df(X)
         self.dtypes = infer_data_types(self.sample_df, type_list=self.type_lst)
         return self
 
-    def transform(self, X):
-        """Transform method."""
+    def transform(self, X):  # noqa : D102
         return X.astype(self.dtypes)

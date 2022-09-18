@@ -7,21 +7,20 @@ from cleaners.util import sort_index
 
 
 class IndexForwardFillna(CleanerBase):
-    """Fill missing data."""
+    """
+    Fill missing data.
+
+    Parameters
+    ----------
+    ix_col : str, default=``date``
+        column to use to determine fill ordering, typically a datetime
+    method : str, default=``ffill``
+        fill method.
+    is_sorted : bool, default=True
+        if not sorted, sort.
+    """
 
     def __init__(self, ix_col="date", method="ffill", is_sorted=True, **kwargs):
-        """
-        Init method.
-
-        Parameters
-        ----------
-        ix_col : str, default=``date``
-            column to use to determine fill ordering, typically a datetime
-        method : str, default=``ffill``
-            fill method.
-        is_sorted : bool, default=True
-            if not sorted, sort.
-        """
         super().__init__(**kwargs)
         self.ix_col = ix_col
         self.method = method
@@ -41,20 +40,19 @@ class IndexForwardFillna(CleanerBase):
 
 
 class JoinDFs(CleanerBase):
-    """Join two dataframes, compatible with either dask or pandas."""
+    """
+    Join two dataframes, compatible with either dask or pandas.
+
+    Parameters
+    ----------
+    right_df : dataframe
+    how : str (default='left')
+    join : bool (default=True)
+        if true, use join on index, otherwise, merge on ix_col
+    ix_col : str, optional
+    """
 
     def __init__(self, right_df, how="left", join=True, ix_col=None, **kwargs):
-        """
-        Init method.
-
-        Parameters
-        ----------
-        right_df
-        how
-        join : bool
-            if true, use join on index, otherwise, merge on ix_col
-        ix_col
-        """
         super().__init__(**kwargs)
         self.right_df = right_df
         self.join = join
@@ -63,12 +61,13 @@ class JoinDFs(CleanerBase):
         self.ix_col = ix_col
         self.how = how
 
-    def fit(self, X, y=None, **kwargs):
+    def fit(self, X, y=None, **kwargs):  # noqa : D102
         self.feature_names_in_ = X.columns.tolist()
         self.check_intersect(X)
         return self
 
     def check_intersect(self, X):
+        """Check for intersection of column names."""
         _intersect = set(self.right_df.columns).intersection(X.columns)
         if self.join:
             assert not _intersect, "join: L and R dataframes have overlapping columns: {}".format(
@@ -120,6 +119,13 @@ class CompositeIndex(CleanerBase):
     """
     Dask does not support multi-indexing so create a composite index from list of index columns.
 
+    Parameters
+    ----------
+    ix_list : list
+    join_char : str, default=``-``
+    new_ix_name : str, default=``index``
+    drop : boolean, default=False
+
     Notes
     -----
      - order in ``ix_list`` matters: most important first.
@@ -129,16 +135,6 @@ class CompositeIndex(CleanerBase):
     """
 
     def __init__(self, ix_list, join_char="-", new_ix_name="index", drop=False, *args, **kwargs):
-        """
-        Init method.
-
-        Parameters
-        ----------
-        ix_list : list
-        join_char : str, default=``-``
-        new_ix_name : str, default=``index``
-        drop : boolean, default=False
-        """
         super(CompositeIndex, self).__init__(*args, **kwargs)
         self.ix_list = ix_list
         self.join_char = join_char
@@ -146,7 +142,7 @@ class CompositeIndex(CleanerBase):
         self.new_ix_name = new_ix_name
         assert len(ix_list) > 1, "ix_list is size {}: must be > 1".format(len(ix_list))
 
-    def fit(self, X, y=None, **kwargs):
+    def fit(self, X, y=None, **kwargs):  # noqa : D102
         if not any(x in X.columns for x in self.ix_list):
             if all(x in X.index.names for x in self.ix_list):
                 raise IndexError("please unset any indexes before running CompositeIndex")
@@ -171,4 +167,15 @@ class CompositeIndex(CleanerBase):
         return X
 
     def get_feature_names_out(self, input_features=None):
-        input_features = input_features or self.feature_names_in_
+        """
+        Get feature names.
+
+        Parameters
+        ----------
+        input_features : list
+
+        Returns
+        -------
+        list
+        """
+        return input_features or self.feature_names_in_

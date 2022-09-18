@@ -1,6 +1,5 @@
 import dask.dataframe as dd
 import numpy as np
-import pytest
 
 from cleaners.impute import ImputeByValue
 

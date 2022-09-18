@@ -18,10 +18,10 @@ nbtest:
 	pytest --nbmake notebooks
 
 coverage:
-	pytest tests --exitfirst --doctest-modules --cov=$(sources) --cov-branch --cov-report=html --cov-report=term-missing --run-slow --nbmake notebooks
+	pytest tests --exitfirst --doctest-modules --cov=$(sources) --cov-branch --cov-report=html --cov-report=term-missing --run-regression --nbmake notebooks
 
 open-coverage:
-	open -a "Google Chrome" htmlcov/index.html
+	xdg-open htmlcov/index.html
 
 pre-commit:
 	pre-commit run --all-files
