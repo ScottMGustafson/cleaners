@@ -2,7 +2,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.api.types import CategoricalDtype
 
 from cleaners import indicators
 

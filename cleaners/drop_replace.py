@@ -32,7 +32,7 @@ class DropNamedCol(CleanerBase):
         for col in self.drop_cols:
             try:
                 X = X.drop(columns=[col])
-            except (KeyError, ValueError) as e:
+            except (KeyError, ValueError) as _:  # noqa: F841
                 if not self.skip_on_fail:
                     raise
         return X

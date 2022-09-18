@@ -6,7 +6,7 @@ I use ``classes`` as a descriptor on functionality of the data
 whereas ``types`` refers to the actual type of the data
 
 Examples
----------
+--------
  - data like [1,0,0,1,nan] would be classified as binary class, numeric type
  - data like [a,b,b,a,nan] would be classified as binary class, object type
  - data like [1.2, 1.0, 1.2, 1.3, 1.23] would be continuous class, numeric type

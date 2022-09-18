@@ -19,7 +19,38 @@ def _get_top_feats(int_top_feats, feat_impt):
 
 
 class TwoWayInteractions(CleanerBase):
-    """Cleaner for two-way interctions."""
+    """
+    Cleaner for two-way interctions generating interaction features up to ``max_interact_feats``.
+
+    Parameters
+    ----------
+    interact_top_n : int, default=30
+        top n feats to interact from feature importance dict
+    max_interact_feats : int, default=300
+        Max number of new feats to generate to prevent the memory from blowing up.
+        for example, if you have 30 features, then 30 * 30 == 900  2-way interaction features.
+        This cleaner will randomly generate 300 out of that 900. Therefore
+        the suggested usage is to just use this interaction among
+        the top N most important feats unless you got tons of
+        memory to spare.
+    seed : int, default=0
+        random seed
+    add_new_feats : bool
+        if true, adds new features from feature pairs.  This would be
+        false if you are scoring new data on an existing model. if you
+        are building a new model, this should be true.
+    interact_feature_path : str
+        If supplied, this will take the place of any best feature inferring logic.
+
+    Other Parameters
+    ----------------
+    exclude : list
+        feats to exclude
+    subset: list
+        feats used to generate interactions.
+    feat_pairs : list
+        existing feature pairs to use
+    """
 
     def __init__(
         self,
@@ -31,38 +62,7 @@ class TwoWayInteractions(CleanerBase):
         interact_feature_path=None,
         **kwargs,
     ):
-        """
-        Generates interaction features up to ``max_interact_feats``.
 
-        Parameters
-        ----------
-        interact_top_n : int, default=30
-            top n feats to interact from feature importance dict
-        max_interact_feats : int, default=300
-            Max number of new feats to generate to prevent the memory from blowing up.
-            for example, if you have 30 features, then 30 * 30 == 900  2-way interaction features.
-            This cleaner will randomly generate 300 out of that 900. Therefore
-            the suggested usage is to just use this interaction among
-            the top N most important feats unless you got tons of
-            memory to spare.
-        seed : int, default=0
-            random seed
-        add_new_feats : bool
-            if true, adds new features from feature pairs.  This would be
-            false if you are scoring new data on an existing model. if you
-            are building a new model, this should be true.
-        interact_feature_path : str
-            If supplied, this will take the place of any best feature inferring logic.
-        Other Parameters
-        ----------------
-        exclude : list
-            feats to exclude
-        subset: list
-            feats used to generate interactions.
-        feat_pairs : list
-            existing feature pairs to use
-
-        """
         super(TwoWayInteractions, self).__init__(**kwargs)
         self.max_new_feats = max_interact_feats
         self.seed = seed
