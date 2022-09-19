@@ -2,12 +2,6 @@
 import numpy as np
 
 
-def assert_no_duplicate_indices(df):
-    """Assert a df has no duped indexes."""
-    if any(df.set_index(["symbol", "date"]).index.duplicated()):
-        raise IndexError("duplicate indices present")
-
-
 def assert_no_duplicate_columns(df):
     """Assert a df has no duped columns."""
     if any(df.columns.duplicated()):
@@ -21,7 +15,7 @@ def cum_sum_index(df):
     df["cum_sum"] = df["temp_ix"].cumsum()
     df = df.set_index("cum_sum", drop=True)
     df = df.drop(columns=["temp_ix"])
-    return df.persist()
+    return df
 
 
 def sort_index(X):
@@ -92,3 +86,27 @@ def serializable_dict(dct, ignore=None):
             except KeyError:  # silently pass if not one of these types
                 new_dct[k] = v
     return new_dct
+
+
+def _to_float_or_str(x):
+    """Try to convert and object to a python native numeric or string type."""
+    for type in [int, float, str]:
+        if isinstance(x, type):
+            return x
+    # otherwise, if it can be converted to a number, do it, otherwise raise.
+    try:
+        return float(x)
+    except (ValueError, TypeError) as _:  # noqa: F841
+        raise ValueError(f"Unrecognized type: ``{type(x)}``")
+
+
+def to_json_serializable(obj):
+    """Recursively convert an object to json-serializable types."""
+    if isinstance(obj, dict):
+        for k in obj.keys():
+            obj[k] = to_json_serializable(obj[k])
+        return obj
+    if any(isinstance(obj, x) for x in [list, tuple, np.ndarray]):
+        return list(map(to_json_serializable, obj))
+    else:
+        return _to_float_or_str(obj)

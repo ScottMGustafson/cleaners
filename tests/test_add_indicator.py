@@ -140,3 +140,30 @@ def test_get_ohe_assertionerror(get_indicator_dd_setup):
     obj.ohe_cols = ["c", "not", "in", "data"]
     with pytest.raises(KeyError):
         obj.get_ohe_cols(X)
+
+
+def test_add_indicators_make_dummies_validate():
+    X = make_fake_data(to_pandas=False)
+    obj = indicators.AddIndicators(feats=["a", "b", "c"], unique_thresh=1, sample_rate=None)
+
+    obj.added_indicators_ = None
+    obj.ohe_cols = None
+    obj._make_dummy_cols(X)
+    assert obj.added_indicators_ == []
+    assert obj.ohe_cols == X.columns.tolist()
+
+    with pytest.raises(ValueError):
+        obj.ohe_cols = ["bogus", "var_1", "var_2"]
+        obj._make_dummy_cols(X)
+
+
+def test_add_indicators_feature_names():
+    obj = indicators.AddIndicators(feats=["a", "b", "c"], unique_thresh=1, sample_rate=None)
+
+    with pytest.raises(ValueError):
+        obj.feature_names_out_ = None
+        obj.get_feature_names_out()
+
+    with pytest.raises(NotImplementedError):
+        obj.feature_names_in_ = [4, 5, 6]
+        obj.get_feature_names_out(input_features=[1, 2, 3])

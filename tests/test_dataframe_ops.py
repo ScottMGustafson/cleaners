@@ -1,8 +1,11 @@
+from unittest import mock
+
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
 
+import cleaners.util
 from cleaners import dataframe_ops
 
 from .make_data import make_fake_date_data
@@ -131,3 +134,31 @@ def test_ffill_dd():
     filled_nans = res[["b", "c"]].values[8]
     pre_arr = res[["b", "c"]].values[7]
     np.testing.assert_array_equal(filled_nans, pre_arr)
+
+
+def test_ffill_transform_ix():
+    obj = dataframe_ops.IndexForwardFillna(ix_col="date", method="ffill")
+    df = make_fake_date_data(to_pandas=True).reset_index()
+
+    out = obj.fit_transform(df)
+    assert out.index.name == "date"
+
+    df["cumsum"] = pd.Series(np.ones(len(df))).cumsum() + 1
+
+    ddf = dd.from_pandas(df, npartitions=2)
+    ddf = ddf.set_index("cumsum", sorted=True)
+    out = obj.fit_transform(ddf).compute()
+    assert out.index.name == "date"
+
+
+def test_reset_index():
+    df = make_fake_date_data(to_pandas=True)
+    pd.testing.assert_frame_equal(df.reset_index(), dataframe_ops.ResetIndex().fit_transform(df))
+
+
+@mock.patch("cleaners.dataframe_ops.sort_index")
+def test_ffillna_sort_called(mock_sort):
+    df = make_fake_date_data(to_pandas=True)
+    mock_sort.return_value = df
+    _ = dataframe_ops.IndexForwardFillna(is_sorted=False).transform(df)
+    assert mock_sort.called
