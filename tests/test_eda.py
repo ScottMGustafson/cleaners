@@ -194,3 +194,19 @@ def test_describe_df():
     df = df[allowed_cols].sort_index()
     exp_df = exp_df.sort_index()
     pd.testing.assert_frame_equal(df, exp_df)
+
+
+@pytest.mark.parametrize(
+    "lst, exp, unique_thresh, type_dct",
+    [
+        ([np.nan, np.nan], "null", 0, {}),
+        ([1, 1, np.nan, 1, 1], "uninformative", 0, {}),
+        ([1, 0, 0, np.nan], "binary", 0, {}),
+        ([1.0, 0.5, 0, 3, 2, np.nan], "continuous", 4, {}),
+        ([1.0, 0.5, 0, 3, 2, np.nan], "categorical", 6, {}),
+        ([1.0, 0.5, 0, 3, 2, np.nan], "continuous", 0.5, {}),
+    ],
+)
+def test_classify_value_counts(lst, exp, unique_thresh, type_dct):
+    df = pd.DataFrame({"A": lst})
+    eda.classify_value_counts(df, "A", unique_thresh=0.05, type_dct=type_dct)

@@ -136,7 +136,7 @@ class AddIndicators(CleanerBase):
             self.added_indicators_ = []
 
         if not self.ohe_cols:
-            self.ohe_cols = X.columns
+            self.ohe_cols = X.columns.tolist()
 
         if not all([x in X.columns for x in self.ohe_cols]):
             raise ValueError(

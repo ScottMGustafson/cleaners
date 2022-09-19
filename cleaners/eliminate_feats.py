@@ -22,7 +22,8 @@ class BaseDropColsMixin:
     def transform(self, X):  # noqa: D102
         if self.drop_cols_ is None:
             return X
-        return X.drop(columns=list(self.drop_cols_))
+        _to_drop = [x for x in self.drop_cols_ if x in X.columns]
+        return X.drop(columns=_to_drop)
 
     def get_feature_names_out(self, input_features=None):  # noqa: D102
         input_features = input_features or self.feature_names_in_
@@ -164,12 +165,10 @@ class DropMostlyNaN(BaseDropColsMixin, CleanerBase):
             [x in self.mandatory for x in self.drop_cols_]
         ), "drop_cols and mandatory_feats overlap"
         missing_cols = [x for x in self.drop_cols_ if x not in X.columns]
-        if not self.skip_if_missing:
-            assert len(missing_cols) == 0, "missing one or more columns from dataframe: {}".format(
-                missing_cols
-            )
+        if not self.skip_if_missing and len(missing_cols) > 0:
+            raise KeyError("missing one or more columns from dataframe: {}".format(missing_cols))
         else:
-            self.drop_cols_ = missing_cols
+            self.drop_cols_ = [x for x in self.drop_cols_ if x in X.columns]
 
     def fit(self, X, y=None, **kwargs):  # noqa : D102
         self.log("dropping mostly NaN cols")

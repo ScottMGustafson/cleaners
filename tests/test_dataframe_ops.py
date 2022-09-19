@@ -149,3 +149,16 @@ def test_ffill_transform_ix():
     ddf = ddf.set_index("cumsum", sorted=True)
     out = obj.fit_transform(ddf).compute()
     assert out.index.name == "date"
+
+
+def test_reset_index():
+    df = make_fake_date_data(to_pandas=True)
+    pd.testing.assert_frame_equal(df.reset_index(), dataframe_ops.ResetIndex().fit_transform(df))
+
+
+@mock.patch("cleaners.dataframe_ops.sort_index")
+def test_ffillna_sort_called(mock_sort):
+    df = make_fake_date_data(to_pandas=True)
+    mock_sort.return_value = df
+    _ = dataframe_ops.IndexForwardFillna(is_sorted=False).transform(df)
+    assert mock_sort.called
