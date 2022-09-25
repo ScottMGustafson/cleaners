@@ -30,7 +30,7 @@ def infer_data_types(df, type_list=None):
 class FixDTypes(CleanerBase):
     """Fix bad datatypes."""
 
-    def __init__(self, type_lst=None, sample_frac=0.05, random_state=0, **kwargs):
+    def __init__(self, type_lst=None, sample_rate=0.05, random_state=0, **kwargs):
         """
         Init FixDTypes.
 
@@ -40,7 +40,7 @@ class FixDTypes(CleanerBase):
         sample_frac : float
         random_state : int
         """
-        super(FixDTypes, self).__init__(sample_rate=sample_frac, **kwargs)
+        super(FixDTypes, self).__init__(sample_rate=sample_rate, **kwargs)
         self.type_lst = type_lst
         self.dtypes = None
         self.random_state = random_state
