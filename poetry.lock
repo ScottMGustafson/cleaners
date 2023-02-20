@@ -108,7 +108,7 @@ name = "attrs"
 version = "22.2.0"
 description = "Classes Without Boilerplate"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.extras]
@@ -451,7 +451,7 @@ name = "exceptiongroup"
 version = "1.1.0"
 description = "Backport of PEP 654 (exception groups)"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [package.extras]
@@ -607,7 +607,7 @@ name = "iniconfig"
 version = "2.0.0"
 description = "brain-dead simple config-ini parsing"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [[package]]
@@ -1565,7 +1565,7 @@ name = "pluggy"
 version = "1.0.0"
 description = "plugin and hook calling mechanisms for python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.extras]
@@ -1709,7 +1709,7 @@ name = "pytest"
 version = "7.2.1"
 description = "pytest: simple powerful testing with Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -2127,7 +2127,7 @@ name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [[package]]
@@ -2342,12 +2342,12 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 
 [extras]
 dev = ["tox", "virtualenv", "pip", "twine", "toml", "bump2version", "ipykernel", "jupyter", "jupyterlab", "jupyterlab-code-formatter", "nbmake"]
-test = ["black", "isort", "flake8", "flake8-docstrings", "pytest-cov", "coverage", "nbmake"]
+test = ["pytest", "black", "isort", "flake8", "flake8-docstrings", "pytest-cov", "coverage", "nbmake"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<4.0"
-content-hash = "8bd604e6752c28d7cb77f7c21a95a6895112e4d4fe4d8441eeed3e43baf8b566"
+content-hash = "ceefc77cb0e4fb46962da0861deccd9cfda19399ef1f944e9c2575b9a54aef5c"
 
 [metadata.files]
 aiofiles = [
