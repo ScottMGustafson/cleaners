@@ -162,7 +162,7 @@ def get_correlates(df, thresh=0.9, feats=None, **corr_kwargs):
 
     corr_matrix = df[feats].corr(**corr_kwargs).abs()
     corr_pairs = (
-        corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+        corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
         .stack()
         .sort_values(ascending=False)
     )
@@ -221,7 +221,7 @@ def get_high_corr_cols(df, rho_thresh, method="spearman"):
     list
     """
     corr_matrix = df.corr(method=method).abs()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     return [column for column in upper.columns if any(upper[column] > rho_thresh)]
 
 

@@ -57,7 +57,7 @@ class ImputeByValue(CleanerBase):
             self.get_sample_df(X)
             self.imputer_ = self.imputer_.fit(self.sample_df[self.cols])
         elif isinstance(X, pd.DataFrame):
-            self.imputer_ = self.imputer_.fit(X[self.cols], y)
+            self.imputer_ = self.imputer_.fit(X[self.cols])
         else:
             raise TypeError(f"not supported for type: {type(X)}")
 
