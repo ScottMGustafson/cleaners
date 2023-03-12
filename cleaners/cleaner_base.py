@@ -38,7 +38,7 @@ class CleanerBase(ABC, TransformerMixin, BaseEstimator):
     def __init__(
         self,
         allow_passthrough=True,
-        min_rows=1000,
+        min_rows=10,
         fail_on_warning=False,
         verbose=True,
         logger_name="cleaners",
