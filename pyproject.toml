@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "cleaners"
-version = "2023.2.0"
+version = "2023.3.0"
 homepage = "https://github.com/ScottMGustafson/cleaners"
 description = "Data cleaners for DS projects in the scikit-learn pipeline format."
 authors = ["scott gustafson <s1gustaf@gmail.com>"]
