@@ -60,7 +60,6 @@ def test_interaction(make_pd_data):
 @mock.patch("yaml.full_load")
 @mock.patch("cleaners.interaction._get_top_feats")
 def test_get_interaction_subset(mock_top_feats, mock_yaml_load):
-
     obj = interaction.TwoWayInteractions(
         max_interact_feats=3,
         interact_top_n=3,
